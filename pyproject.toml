@@ -2,4 +2,12 @@
 name = "lex2spdx"
 version = "0.1.0"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "ipykernel>=7.1.0",
+    "matplotlib>=3.10.8",
+    "pandas>=3.0.0",
+    "pandas-stubs~=3.0.0",
+]
+
+[tool.ruff]
+line-length = 120
