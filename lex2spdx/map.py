@@ -5,6 +5,11 @@ import pandas as pd
 import cvar
 
 
-def load_dataset() -> pd.DataFrame:
-    df = pd.read_csv(cvar.pypi_versions_dataset_path)
+def load_dataset(sample_size: int | None) -> pd.DataFrame:
+    """
+    :param sample_size: The number of rows to load instead of full dataset. If None, load the full dataset.
+    :return: The loaded dataset.
+    """
+    df = pd.read_csv(cvar.pypi_versions_dataset_path, low_memory=False, nrows=sample_size)
+    df.drop(["Unnamed: 0", "idx"], axis=1, inplace=True)
     return df
