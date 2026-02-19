@@ -64,7 +64,10 @@ def _save_spdx_licenses() -> None:
 
 def load_spdx_licenses() -> list[License]:
     """Load and return a list of SPDX license as dictionaries with their information."""
-    return json.load(OUTPUT_PATH)
+    with open(OUTPUT_PATH, "r", encoding="utf-8") as f:
+        licenses = json.load(f)
+
+    return licenses
 
 
 if __name__ == "__main__":
