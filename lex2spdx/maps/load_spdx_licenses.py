@@ -25,7 +25,7 @@ class License(TypedDict):
     copyrightText: str
 
 
-def load_spdx_licenses() -> list[License]:
+def save_spdx_licenses() -> list[License]:
     license_list = []
     for xml_file in cvar.spdx_license_list_dir.glob("*.xml"):
         root = ElementTree.parse(xml_file).getroot()
@@ -60,7 +60,7 @@ def load_spdx_licenses() -> list[License]:
 
 
 if __name__ == "__main__":
-    licenses = load_spdx_licenses()
+    licenses = save_spdx_licenses()
     output_path = cvar.spdx_license_list_dir.parent / "spdx-licenses.json"
     output_path.write_text(json.dumps(licenses, indent=4), encoding="utf-8")
     print(f"Saved {len(licenses)} licenses to {output_path}")
