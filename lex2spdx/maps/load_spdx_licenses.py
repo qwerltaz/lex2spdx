@@ -1,10 +1,10 @@
 import json
-from dataclasses import dataclass
+from typing import TypedDict
 from xml.etree import ElementTree
 
 import cvar
 
-NAMESPACE = "http://www.spdx.org/license"
+XML_NAMESPACE = "http://www.spdx.org/license"
 
 
 def _extract_text(element: ElementTree.Element | None) -> str:
@@ -13,37 +13,36 @@ def _extract_text(element: ElementTree.Element | None) -> str:
     return " ".join("".join(element.itertext()).split())
 
 
-@dataclass(frozen=True)
-class License:
+class License(TypedDict):
     isOsiApproved: bool
     licenseId: str
     name: str
     listVersionAdded: str | None
     deprecatedVersion: str | None
-    crossRefs: tuple[str, ...]
+    crossRefs: list[str]
     text: str
     titleText: str
     copyrightText: str
 
 
-def load_spdx_licenses() -> list["License"]:
+def load_spdx_licenses() -> list[License]:
     license_list = []
     for xml_file in cvar.spdx_license_list_dir.glob("*.xml"):
         root = ElementTree.parse(xml_file).getroot()
 
-        license_element = root.find(f"{{{NAMESPACE}}}license")
+        license_element = root.find(f"{{{XML_NAMESPACE}}}license")
         if license_element is None:
             continue
 
-        cross_refs = tuple(
+        cross_refs = [
             element.text
-            for element in license_element.findall(f"{{{NAMESPACE}}}crossRefs/{{{NAMESPACE}}}crossRef")
+            for element in license_element.findall(f"{{{XML_NAMESPACE}}}crossRefs/{{{XML_NAMESPACE}}}crossRef")
             if element.text
-        )
+        ]
 
-        text_element = license_element.find(f"{{{NAMESPACE}}}text")
-        title_element = license_element.find(f"{{{NAMESPACE}}}text/{{{NAMESPACE}}}titleText")
-        copyright_element = license_element.find(f"{{{NAMESPACE}}}text/{{{NAMESPACE}}}copyrightText")
+        text_element = license_element.find(f"{{{XML_NAMESPACE}}}text")
+        title_element = license_element.find(f"{{{XML_NAMESPACE}}}text/{{{XML_NAMESPACE}}}titleText")
+        copyright_element = license_element.find(f"{{{XML_NAMESPACE}}}text/{{{XML_NAMESPACE}}}copyrightText")
 
         license_list.append(License(
             isOsiApproved=license_element.get("isOsiApproved", "false").lower() == "true",
@@ -62,3 +61,6 @@ def load_spdx_licenses() -> list["License"]:
 
 if __name__ == "__main__":
     licenses = load_spdx_licenses()
+    output_path = cvar.spdx_license_list_dir.parent / "spdx-licenses.json"
+    output_path.write_text(json.dumps(licenses, indent=4), encoding="utf-8")
+    print(f"Saved {len(licenses)} licenses to {output_path}")
