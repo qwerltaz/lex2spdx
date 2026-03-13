@@ -1,8 +1,10 @@
+"""Individual maps to SPDX licenses."""
+
 from abc import ABC, abstractmethod
 
-from . import load_spdx_licenses
+import load_spdx_licenses
 
-LICENSES = load_spdx_licenses.load_spdx_licenses()
+LICENSES = load_spdx_licenses.get_licenses()
 
 
 class IMap(ABC):

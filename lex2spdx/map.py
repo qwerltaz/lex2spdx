@@ -3,7 +3,7 @@
 import pandas as pd
 
 import cvar
-from maps import map_spdx
+import maps
 
 
 def load_dataset(sample_size: int | None) -> pd.DataFrame:
@@ -17,4 +17,4 @@ def load_dataset(sample_size: int | None) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    map_spdx.MapExactMatch().map("MIT License")
+    maps.MapExactMatch().map("MIT License")
