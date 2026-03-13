@@ -19,4 +19,12 @@ class IMap(ABC):
 
 class MapExactMatch(IMap):
     def map(self, license_field: str) -> str | None:
-        raise NotImplementedError
+        for license_spdx in LICENSES:
+            if any((
+                    license_field == license_spdx["text"],
+                    license_field == license_spdx["titleText"],
+                    license_field == license_spdx["copyrightText"],
+            )):
+                return license_spdx["licenseId"]
+
+        return None
