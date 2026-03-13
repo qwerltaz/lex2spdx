@@ -1,11 +1,9 @@
-import json
 from typing import TypedDict
 from xml.etree import ElementTree
 
 import cvar
 
 XML_NAMESPACE = "http://www.spdx.org/license"
-OUTPUT_PATH = cvar.spdx_license_list_dir.parent / "spdx-licenses.json"
 
 
 class License(TypedDict):
@@ -27,7 +25,8 @@ def _extract_text(element: ElementTree.Element | None) -> str:
     return " ".join("".join(element.itertext()).split())
 
 
-def _save_spdx_licenses() -> None:
+def get_licenses() -> list[License]:
+    """Parse SPDX license XML files and return a list of License dictionaries with their information."""
     license_list = []
     for xml_file in cvar.spdx_license_list_dir.glob("*.xml"):
         root = ElementTree.parse(xml_file).getroot()
@@ -58,17 +57,4 @@ def _save_spdx_licenses() -> None:
             copyrightText=_extract_text(copyright_element),
         ))
 
-    OUTPUT_PATH.write_text(json.dumps(license_list, indent=4), encoding="utf-8")
-    print(f"Saved {len(license_list)} licenses to {OUTPUT_PATH}")
-
-
-def load_spdx_licenses() -> list[License]:
-    """Load and return a list of SPDX license as dictionaries with their information."""
-    with open(OUTPUT_PATH, "r", encoding="utf-8") as f:
-        licenses = json.load(f)
-
-    return licenses
-
-
-if __name__ == "__main__":
-    _save_spdx_licenses()
+    return license_list
