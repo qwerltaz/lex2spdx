@@ -1,4 +1,4 @@
-"""Individual maps to SPDX licenses."""
+"""Individual maps to SPDX licenses. Each map will always return an SPDX ID or None."""
 
 from abc import ABC, abstractmethod
 
@@ -8,6 +8,9 @@ LICENSES = load_spdx_licenses.get_licenses()
 
 
 class IMap(ABC):
+    def __init__(self):
+        self.licenses = LICENSES
+
     @abstractmethod
     def map(self, license_field: str) -> str | None:
         """
@@ -18,6 +21,17 @@ class IMap(ABC):
         """
 
 
+class MapExactID(IMap):
+    """Map to SPDX ID only if the license exactly matches an SPDX identifier."""
+
+    def map(self, license_field: str) -> str | None:
+        for license_spdx in LICENSES:
+            if license_field == license_spdx["text"]:
+                return license_spdx["licenseId"]
+
+        return None
+
+
 class MapExactMatch(IMap):
     """
     Map to SPDX ID only if the license exactly matches a license text,
@@ -25,7 +39,7 @@ class MapExactMatch(IMap):
     """
 
     def map(self, license_field: str) -> str | None:
-        for license_spdx in LICENSES:
+        for license_spdx in self.licenses:
             if any((
                     license_field == license_spdx["text"],
                     license_field == license_spdx["titleText"],
@@ -43,7 +57,7 @@ class MapSubstring(IMap):
     """
 
     def map(self, license_field: str) -> str | None:
-        for license_spdx in LICENSES:
+        for license_spdx in self.licenses:
             text = license_spdx["text"]
             title_text = license_spdx["titleText"]
             copyright_text = license_spdx["copyrightText"]
