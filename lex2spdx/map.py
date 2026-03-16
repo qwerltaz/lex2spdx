@@ -2,8 +2,8 @@
 
 import pandas as pd
 
-import cvar
-import maps
+from . import cvar
+from . import maps
 
 
 def load_dataset(sample_size: int | None) -> pd.DataFrame:

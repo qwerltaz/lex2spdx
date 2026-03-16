@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-import load_spdx_licenses
+from . import load_spdx_licenses
 
 LICENSES = load_spdx_licenses.get_licenses()
 

@@ -1,7 +1,7 @@
 from typing import TypedDict
 from xml.etree import ElementTree
 
-import cvar
+from . import cvar
 
 XML_NAMESPACE = "http://www.spdx.org/license"
 
