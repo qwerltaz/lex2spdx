@@ -15,6 +15,3 @@ def load_dataset(sample_size: int | None) -> pd.DataFrame:
     df.drop(["Unnamed: 0", "idx"], axis=1, inplace=True)
     return df
 
-
-if __name__ == "__main__":
-    maps.MapExactMatch().map("MIT License")

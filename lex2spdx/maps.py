@@ -29,3 +29,20 @@ class MapExactMatch(IMap):
                 return license_spdx["licenseId"]
 
         return None
+
+
+class MapSubstring(IMap):
+    def map(self, license_field: str) -> str | None:
+        for license_spdx in LICENSES:
+            text = license_spdx["text"]
+            title_text = license_spdx["titleText"]
+            copyright_text = license_spdx["copyrightText"]
+
+            if any((
+                    bool(text) and text in license_field,
+                    bool(title_text) and title_text in license_field,
+                    bool(copyright_text) and copyright_text in license_field,
+            )):
+                return license_spdx["licenseId"]
+
+        return None
