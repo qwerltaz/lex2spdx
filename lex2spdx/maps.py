@@ -11,7 +11,8 @@ class IMap(ABC):
     @abstractmethod
     def map(self, license_field: str) -> str | None:
         """
-        Map a license string to an SPDX license using exact match.
+        Map a license string to an SPDX license identifier.
+
         :param license_field: The license string to map.
         :return: The mapped SPDX license or None if no match is found.
         """
