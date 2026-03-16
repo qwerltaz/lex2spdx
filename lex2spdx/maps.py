@@ -19,6 +19,11 @@ class IMap(ABC):
 
 
 class MapExactMatch(IMap):
+    """
+    Map to SPDX ID only if the license exactly matches a license text,
+    title text, or copyright text.
+    """
+
     def map(self, license_field: str) -> str | None:
         for license_spdx in LICENSES:
             if any((
@@ -32,6 +37,11 @@ class MapExactMatch(IMap):
 
 
 class MapSubstring(IMap):
+    """
+    Map to SPDX ID only if the license contains exactly a license text,
+    title text, or copyright text.
+    """
+
     def map(self, license_field: str) -> str | None:
         for license_spdx in LICENSES:
             text = license_spdx["text"]
