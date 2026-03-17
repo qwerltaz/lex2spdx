@@ -2,8 +2,12 @@
 
 import pandas as pd
 
-from . import cvar
-from . import maps
+try:
+    from . import cvar
+    from . import maps
+except ImportError:
+    import cvar
+    import maps
 
 
 def load_dataset(sample_size: int | None) -> pd.DataFrame:
