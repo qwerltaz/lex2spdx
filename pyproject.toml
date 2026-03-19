@@ -7,7 +7,11 @@ dependencies = [
     "matplotlib>=3.10.8",
     "pandas>=3.0.0",
     "pandas-stubs~=3.0.0",
+    "pytest>=9.0.2",
 ]
 
 [tool.ruff]
 line-length = 120
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
