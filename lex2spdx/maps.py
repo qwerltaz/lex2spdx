@@ -68,7 +68,6 @@ class MapSubstring(IMap):
             copyright_text = license_spdx["copyrightText"]
 
             if any((
-                # TODO it can be nan and is then treated as a number.
                     bool(text) and text in license_field,
                     bool(name) and name in license_field,
                     bool(title_text) and title_text in license_field,
