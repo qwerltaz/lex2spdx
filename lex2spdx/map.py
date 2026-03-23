@@ -19,3 +19,19 @@ def load_dataset(sample_size: int | None) -> pd.DataFrame:
     df.drop(["Unnamed: 0", "idx"], axis=1, inplace=True)
     return df
 
+
+class MapPipeline:
+
+    def __init__(self, maps: tuple[maps.IMap]):
+        self.maps = maps
+
+    def run(self, df: pd.DataFrame) -> pd.DataFrame:
+        for map in self.maps:
+            for license_field in df["license"]:
+                print(f"true: {license_field}, mapped: {map.map(license_field)}")
+
+
+if __name__ == "__main__":
+    df = load_dataset(100)
+    mp = MapPipeline((maps.MapSubstring(),))
+    mp.run(df)
