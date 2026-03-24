@@ -71,10 +71,10 @@ def main():
 
     failed_df = df[[x in failed for x in df["idx"]]]
     mapped_df = df[[x in mapped for x in df["idx"]]]
-    failed_list = failed_df["license"].tolist()
-    print("failed to map: ", failed_list)
+    failed_set = set(failed_df["license"])
+    print("failed to map: ", failed_set)
     with open("temp.json", "w", encoding="utf-8") as f:
-        json.dump(failed_list, f, indent=4)
+        json.dump(list(failed_set), f, indent=4)
 
 
 if __name__ == "__main__":
