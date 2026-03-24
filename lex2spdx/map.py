@@ -17,8 +17,8 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False) -> 
     :param random_start: If True, start sampling at random position in dataset. Only used if sample_size is not None.
     :return: The loaded dataset.
     """
-    # About 50% of the true dataset size, for faster random sampling.
-    alleged_dataset_size = 5583124
+    # About 10% of the true dataset size, for faster random sampling.
+    alleged_dataset_size = 200000
 
     if sample_size > alleged_dataset_size:
         sample_size = alleged_dataset_size
