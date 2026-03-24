@@ -8,6 +8,7 @@ dependencies = [
     "pandas>=3.0.0",
     "pandas-stubs~=3.0.0",
     "pytest>=9.0.2",
+    "rapidfuzz>=3.14.3",
 ]
 
 [tool.ruff]
