@@ -38,7 +38,7 @@ class MapExactID(IMap):
 class MapExactMatch(IMap):
     """
     Map to SPDX ID only if the license exactly matches a license name, full text,
-    title text, or copyright text, according to the SPDX specification.
+    or title text, according to the SPDX specification.
     """
 
     def map(self, license_field: str) -> str | None:
@@ -47,7 +47,6 @@ class MapExactMatch(IMap):
                     license_field == license_spdx["text"],
                     license_field == license_spdx["name"],
                     license_field == license_spdx["titleText"],
-                    license_field == license_spdx["copyrightText"],
             )):
                 return license_spdx["licenseId"]
 
@@ -57,7 +56,7 @@ class MapExactMatch(IMap):
 class MapSubstring(IMap):
     """
     Map to SPDX ID only if the license contains exactly a license name, text,
-    title text, or copyright text, according to the SPDX specification.
+    or title text, according to the SPDX specification.
     """
 
     def map(self, license_field: str) -> str | None:
@@ -65,13 +64,11 @@ class MapSubstring(IMap):
             text = license_spdx["text"]
             name = license_spdx["name"]
             title_text = license_spdx["titleText"]
-            copyright_text = license_spdx["copyrightText"]
 
             if any((
                     bool(text) and text in license_field,
                     bool(name) and name in license_field,
                     bool(title_text) and title_text in license_field,
-                    bool(copyright_text) and copyright_text in license_field,
             )):
                 return license_spdx["licenseId"]
 
