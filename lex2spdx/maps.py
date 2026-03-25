@@ -3,16 +3,14 @@
 from abc import ABC, abstractmethod
 
 try:
-    from . import load_spdx_licenses
+    from .spdx_license_data import LicenseData
 except ImportError:
-    import load_spdx_licenses
-
-LICENSES = load_spdx_licenses.get_licenses()
+    from spdx_license_data import LicenseData
 
 
 class IMap(ABC):
     def __init__(self):
-        self.licenses = LICENSES
+        self.licenses = LicenseData.licenses
 
     @abstractmethod
     def map(self, license_field: str) -> str | None:
@@ -28,7 +26,7 @@ class MapExactID(IMap):
     """Map to SPDX ID only if the license exactly matches an SPDX identifier."""
 
     def map(self, license_field: str) -> str | None:
-        for license_spdx in LICENSES:
+        for license_spdx in LicenseData.licenses:
             if license_field == license_spdx["licenseId"]:
                 return license_spdx["licenseId"]
 
@@ -73,3 +71,6 @@ class MapSubstring(IMap):
                 return license_spdx["licenseId"]
 
         return None
+
+
+print()

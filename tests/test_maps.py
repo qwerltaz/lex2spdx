@@ -39,8 +39,9 @@ def test_map_substring():
     assert map_substring.map(
         "Copyright (c) 1992, 1991, 1990 MIPS Computer Systems, Inc. MIPS Computer Systems, Inc. grants "
         "reproduction and use rights to all parties, PROVIDED that this comment is maintained in the copy.") == "MIPS"
-    assert map_substring.map(
+    assert (map_substring.map(
         "lipsum Copyright (c) 1992, 1991, 1990 MIPS Computer Systems, Inc. MIPS Computer Systems, Inc. grants "
-        "reproduction and use rights to all parties, PROVIDED that this comment is maintained in the copy. lipsum") == "MIPS"
+        "reproduction and use rights to all parties, PROVIDED that this comment is maintained in the copy. lipsum")
+            == "MIPS")
 
     assert map_substring.map("MIT  License") is None

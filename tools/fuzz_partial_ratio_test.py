@@ -2,11 +2,9 @@
 
 from rapidfuzz.fuzz import partial_ratio
 
-from lex2spdx.load_spdx_licenses import get_licenses
+from lex2spdx.spdx_license_data import LicenseData
 
-LICENSES = get_licenses()
-
-gpl3_text = LICENSES[4]["text"]
+gpl3_text = LicenseData.licenses[4]["text"]
 
 checks: list[tuple[str, str]] = [
     ("License :: OSI Approved :: Apache Software License",
@@ -18,9 +16,6 @@ checks: list[tuple[str, str]] = [
     ("MIT License: http://opensource.org/licenses/MIT", "MIT License"),
     ("http://opensource.org/licenses/MIT", "MIT License"),
 ]
-
-# for i, l in enumerate(LICENSES):
-#     print(i, l["name"])
 
 for check in checks:
     license_field, ground_truth = check

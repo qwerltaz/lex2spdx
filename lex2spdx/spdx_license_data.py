@@ -6,7 +6,7 @@ try:
 except ImportError:
     import cvar
 
-XML_NAMESPACE = "http://www.spdx.org/license"
+_XML_NAMESPACE = "http://www.spdx.org/license"
 
 
 class License(TypedDict):
@@ -34,19 +34,19 @@ def get_licenses() -> list[License]:
     for xml_file in cvar.spdx_license_list_dir.glob("*.xml"):
         root = ElementTree.parse(xml_file).getroot()
 
-        license_element = root.find(f"{{{XML_NAMESPACE}}}license")
+        license_element = root.find(f"{{{_XML_NAMESPACE}}}license")
         if license_element is None:
             continue
 
         cross_refs = [
             element.text
-            for element in license_element.findall(f"{{{XML_NAMESPACE}}}crossRefs/{{{XML_NAMESPACE}}}crossRef")
+            for element in license_element.findall(f"{{{_XML_NAMESPACE}}}crossRefs/{{{_XML_NAMESPACE}}}crossRef")
             if element.text
         ]
 
-        text_element = license_element.find(f"{{{XML_NAMESPACE}}}text")
-        title_element = license_element.find(f"{{{XML_NAMESPACE}}}text/{{{XML_NAMESPACE}}}titleText")
-        copyright_element = license_element.find(f"{{{XML_NAMESPACE}}}text/{{{XML_NAMESPACE}}}copyrightText")
+        text_element = license_element.find(f"{{{_XML_NAMESPACE}}}text")
+        title_element = license_element.find(f"{{{_XML_NAMESPACE}}}text/{{{_XML_NAMESPACE}}}titleText")
+        copyright_element = license_element.find(f"{{{_XML_NAMESPACE}}}text/{{{_XML_NAMESPACE}}}copyrightText")
 
         license_list.append(License(
             isOsiApproved=license_element.get("isOsiApproved", "false").lower() == "true",
@@ -61,3 +61,11 @@ def get_licenses() -> list[License]:
         ))
 
     return license_list
+
+
+class LicenseData:
+    licenses = get_licenses()
+    license_ids = set(map(lambda x: x["licenseId"], licenses))
+    license_names = set(map(lambda x: x["name"], licenses))
+    license_title_texts = set(map(lambda x: x["titleText"], licenses))
+    license_texts = set(map(lambda x: x["text"], licenses))

@@ -73,7 +73,7 @@ def main():
     mapped_df = df[[x in mapped for x in df["idx"]]]
     failed_set = set(failed_df["license"])
     print("failed to map: ", failed_set)
-    with open("temp.json", "w", encoding="utf-8") as f:
+    with open("failed_to_map.json", "w", encoding="utf-8") as f:
         json.dump(list(failed_set), f, indent=4)
 
 
