@@ -13,17 +13,19 @@ except ImportError:
 
 def load_dataset(sample_size: int | None = None, random_start: bool = False) -> pd.DataFrame:
     """
+    Loads the PyPI metadata dataset and drops empty license fields.
+
     :param sample_size: The number of rows to load instead of full dataset. If None, load the full dataset.
     :param random_start: If True, start sampling at random position in dataset. Only used if sample_size is not None.
     :return: The loaded dataset.
     """
-    # About 10% of the true dataset size, for faster random sampling.
-    alleged_dataset_size = 200000
-
-    if sample_size > alleged_dataset_size:
-        sample_size = alleged_dataset_size
-
     if sample_size is not None and random_start:
+        # About 10% of the true dataset size, for faster random sampling.
+        alleged_dataset_size = 200000
+
+        if sample_size > alleged_dataset_size:
+            sample_size = alleged_dataset_size
+
         start_row = random.randint(0, alleged_dataset_size)
 
         df = pd.read_csv(

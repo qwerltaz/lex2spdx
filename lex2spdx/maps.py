@@ -71,6 +71,3 @@ class MapSubstring(IMap):
                 return license_spdx["licenseId"]
 
         return None
-
-
-print()
