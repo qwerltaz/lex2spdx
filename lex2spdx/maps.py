@@ -41,12 +41,14 @@ class MapExactMatch(IMap):
 
     def map(self, license_field: str) -> str | None:
         for license_spdx in self.licenses:
-            if any((
-                    license_field == license_spdx["text"],
-                    license_field == license_spdx["name"],
-                    license_field == license_spdx["titleText"],
-            )):
-                return license_spdx["licenseId"]
+            text = license_spdx["text"]
+            name = license_spdx["name"]
+            title_text = license_spdx["titleText"]
+            candidates = [text, name, title_text]
+
+            for candidate in candidates:
+                if candidate and license_field == candidate:
+                    return license_spdx["licenseId"]
 
         return None
 
@@ -63,11 +65,9 @@ class MapSubstring(IMap):
             name = license_spdx["name"]
             title_text = license_spdx["titleText"]
 
-            if any((
-                    bool(text) and text in license_field,
-                    bool(name) and name in license_field,
-                    bool(title_text) and title_text in license_field,
-            )):
-                return license_spdx["licenseId"]
+            candidates = [text, name, title_text]
+            for candidate in candidates:
+                if candidate and candidate in license_field:
+                    return license_spdx["licenseId"]
 
         return None

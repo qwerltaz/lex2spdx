@@ -18,10 +18,11 @@ def test_map_exact_match():
     assert map_exact_match.map("MIT License ") is None
     assert map_exact_match.map("MIT  License") is None
     assert map_exact_match.map("mit  License") is None
+    # Both IDs have the same title text, for now accept either, will think if this is ok or not.
+    assert map_exact_match.map("GNU LIBRARY GENERAL PUBLIC LICENSE Version 2, June 1991") in ("LGPL-2.0", "LGPL-2.0+")
     # Name
     assert map_exact_match.map("The Unlicense") == "Unlicense"
     # Text
-    assert map_exact_match.map("GNU LIBRARY GENERAL PUBLIC LICENSE Version 2, June 1991") == "LGPL-2.0"
     assert map_exact_match.map(
         "Copyright (c) 1992, 1991, 1990 MIPS Computer Systems, Inc. MIPS Computer Systems, Inc. grants "
         "reproduction and use rights to all parties, PROVIDED that this comment is maintained in the copy.") == "MIPS"
