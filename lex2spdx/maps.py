@@ -2,10 +2,16 @@
 
 from abc import ABC, abstractmethod
 
+from rapidfuzz.fuzz import partial_ratio
+import re
+
 try:
     from .spdx_license_data import LicenseData
 except ImportError:
     from spdx_license_data import LicenseData
+import logger
+
+log = logger.get()
 
 
 class IMap(ABC):
@@ -71,3 +77,29 @@ class MapSubstring(IMap):
                     return license_spdx["licenseId"]
 
         return None
+
+
+class MapFuzzyMatch(IMap):
+    def __init__(self, threshold: int = 80):
+        super().__init__()
+        self.threshold = threshold
+
+    def map(self, license_field: str) -> str | None:
+        best_match_id = None
+        best_score = 0
+
+        for license_spdx in self.licenses:
+            text = license_spdx["text"]
+            name = license_spdx["name"]
+            title_text = license_spdx["titleText"]
+
+            candidates = [text, name, title_text]
+            for candidate in candidates:
+                if candidate:
+                    score = partial_ratio(license_field, candidate)
+                    if score > best_score:
+                        best_score = score
+                        best_match_id = license_spdx["licenseId"]
+
+        log.debug("Fuzzy match matched (score %s): matched SPDX ID %s to license field %s", best_score, best_match_id, license_field)
+        return best_match_id if best_score >= self.threshold else None

@@ -9,6 +9,9 @@ try:
 except ImportError:
     import cvar
     import maps
+import logger
+
+log = logger.get()
 
 
 def load_dataset(sample_size: int | None = None, random_start: bool = False) -> pd.DataFrame:
@@ -52,7 +55,7 @@ class MapPipeline:
         failed_rows_indices = set()
 
         for license_map in self.maps:
-            for _, row in df.iterrows():
+            for i, row in df.iterrows():
                 if row["idx"] in mapped_rows_indices:
                     continue
 
@@ -60,23 +63,28 @@ class MapPipeline:
                 result = license_map.map(row_license)
                 if result is None:
                     failed_rows_indices.add(row["idx"])
+                    result_text = "(FAIL)"
                 else:
                     mapped_rows_indices.add(row["idx"])
+                    if result != row_license:
+                        result_text = "(FAIL)"
+                    else:
+                        result_text = ""
+                log.debug("%d. %s mapped to %s from %s %s", i, license_map.__class__.__name__, result, row_license,
+                          result_text)
 
         return mapped_rows_indices, failed_rows_indices
 
 
 def main():
-    df = load_dataset(3000, True)
-    mp = MapPipeline([maps.MapExactID(), maps.MapSubstring()])
+    df = load_dataset(300, True)
+    mp = MapPipeline([maps.MapFuzzyMatch()])
     mapped, failed = mp.run(df)
 
     failed_df = df[[x in failed for x in df["idx"]]]
     mapped_df = df[[x in mapped for x in df["idx"]]]
     failed_set = set(failed_df["license"])
-    print("failed to map: ", failed_set)
-    with open("failed_to_map.json", "w", encoding="utf-8") as f:
-        json.dump(list(failed_set), f, indent=4)
+    log.info("failed to map: ", failed_set)
 
 
 if __name__ == "__main__":
