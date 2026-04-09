@@ -97,9 +97,6 @@ class MapSubstring(IMap):
 
 
 class MapFuzzyMatch(IMap):
-    def __init__(self, threshold: int = 80):
-        super().__init__()
-        self.threshold = threshold
 
     def map(self, license_field: str):
         scores_id = rapidfuzz.process.extract(license_field, LicenseData.license_ids,
