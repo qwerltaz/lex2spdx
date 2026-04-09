@@ -28,6 +28,20 @@ class IMap(ABC):
         """
 
 
+class MapNA(IMap):
+    """Discard fields like 'Unknown'. Nothing we can do here."""
+
+    def __init__(self):
+        super().__init__()
+        self.bad_values = ("unknown", "license.txt")
+
+    def map(self, license_field: str):
+        if license_field.lower() in self.bad_values:
+            return ""
+        else:
+            return None
+
+
 class MapExactID(IMap):
     """Map to SPDX ID only if the license exactly matches an SPDX identifier."""
 
