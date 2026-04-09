@@ -1,9 +1,9 @@
 """Individual maps to SPDX licenses. Each map will always return an SPDX ID or None."""
 
 from abc import ABC, abstractmethod
+from typing import Literal
 
-from rapidfuzz.fuzz import partial_ratio
-import re
+import rapidfuzz
 
 try:
     from .spdx_license_data import LicenseData
@@ -15,16 +15,19 @@ log = logger.get()
 
 
 class IMap(ABC):
-    def __init__(self):
-        self.licenses = LicenseData.licenses
-
     @abstractmethod
-    def map(self, license_field: str) -> str | None:
+    def map(self, license_field: str) -> str | None | Literal[""]:
         """
         Map a license string to an SPDX license identifier.
 
+        Return an empty string if the license is confirmed to be unknown, and
+        it cannot be mapped.
+
+        Return None if the mapping failed to find a fitting identifier,
+        but there's a chance it's identifiable in general.
+
         :param license_field: The license string to map.
-        :return: The mapped SPDX license or None if no match is found.
+        :return: The detected SPDX license ID.
         """
 
 
@@ -45,7 +48,7 @@ class MapNA(IMap):
 class MapExactID(IMap):
     """Map to SPDX ID only if the license exactly matches an SPDX identifier."""
 
-    def map(self, license_field: str) -> str | None:
+    def map(self, license_field: str):
         for license_spdx in LicenseData.licenses:
             if license_field == license_spdx["licenseId"]:
                 return license_spdx["licenseId"]
@@ -59,8 +62,8 @@ class MapExactMatch(IMap):
     or title text, according to the SPDX specification.
     """
 
-    def map(self, license_field: str) -> str | None:
-        for license_spdx in self.licenses:
+    def map(self, license_field: str):
+        for license_spdx in LicenseData.licenses:
             text = license_spdx["text"]
             name = license_spdx["name"]
             title_text = license_spdx["titleText"]
@@ -79,8 +82,8 @@ class MapSubstring(IMap):
     or title text, according to the SPDX specification.
     """
 
-    def map(self, license_field: str) -> str | None:
-        for license_spdx in self.licenses:
+    def map(self, license_field: str):
+        for license_spdx in LicenseData.licenses:
             text = license_spdx["text"]
             name = license_spdx["name"]
             title_text = license_spdx["titleText"]
