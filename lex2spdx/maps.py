@@ -84,22 +84,19 @@ class MapFuzzyMatch(IMap):
         super().__init__()
         self.threshold = threshold
 
-    def map(self, license_field: str) -> str | None:
-        best_match_id = None
-        best_score = 0
+    def map(self, license_field: str):
+        scores_id = rapidfuzz.process.extract(license_field, LicenseData.license_ids,
+                                              processor=rapidfuzz.utils.default_process)
+        scores_name = rapidfuzz.process.extract(license_field, LicenseData.license_names,
+                                                processor=rapidfuzz.utils.default_process)
+        scores_title_text = rapidfuzz.process.extract(license_field, LicenseData.license_title_texts,
+                                                      processor=rapidfuzz.utils.default_process)
+        scores_text = rapidfuzz.process.extract(license_field, LicenseData.license_texts,
+                                                processor=rapidfuzz.utils.default_process)
 
-        for license_spdx in self.licenses:
-            text = license_spdx["text"]
-            name = license_spdx["name"]
-            title_text = license_spdx["titleText"]
+        scores = scores_id + scores_name + scores_title_text + scores_text
 
-            candidates = [text, name, title_text]
-            for candidate in candidates:
-                if candidate:
-                    score = partial_ratio(license_field, candidate)
-                    if score > best_score:
-                        best_score = score
-                        best_match_id = license_spdx["licenseId"]
+        best_match_id = scores[0][0]
+        log.debug("Best match '%s' for input %s\nfuzzy matching scores: %r", best_match_id, license_field, scores)
 
-        log.debug("Fuzzy match matched (score %s): matched SPDX ID %s to license field %s", best_score, best_match_id, license_field)
-        return best_match_id if best_score >= self.threshold else None
+        return best_match_id
