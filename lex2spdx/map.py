@@ -10,7 +10,7 @@ try:
 except ImportError:
     import cvar
     import maps
-import logger
+    import logger
 
 log = logger.get()
 

@@ -49,7 +49,7 @@ _logging_config = {
             "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         },
         "color_verbose": {
-            "()": "logger._ColoredFormatter",
+            "()": _ColoredFormatter,
             "format": "[%(levelname)s] %(asctime)s: %(message)s",
             "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         },
