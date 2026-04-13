@@ -1,4 +1,4 @@
-"""Individual maps to SPDX licenses. Each map will always return an SPDX ID or None."""
+"""Individual maps from free-text license fields to SPDX licenses."""
 
 from abc import ABC, abstractmethod
 from typing import Literal
@@ -19,7 +19,7 @@ class IMap(ABC):
     @abstractmethod
     def map(self, license_field: str) -> str | None | Literal[""]:
         """
-        Map a license string to an SPDX license identifier.
+        Map a free-text license string to an SPDX license identifier.
 
         Return an empty string if the license is confirmed to be unknown, and
         it cannot be mapped.
@@ -128,5 +128,3 @@ class MapFuzzyMatch(IMap):
                   best_match_spdx_id, license_field, scores)
 
         return best_match_spdx_id if best_match_score > self.fuzzy_match_threshold else None
-
-        return best_match_id
