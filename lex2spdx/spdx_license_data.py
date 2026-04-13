@@ -65,7 +65,7 @@ def get_licenses() -> list[License]:
 
 class LicenseData:
     licenses = get_licenses()
-    license_ids = set(map(lambda x: x["licenseId"], licenses))
-    license_names = set(map(lambda x: x["name"], licenses))
-    license_title_texts = set(map(lambda x: x["titleText"], licenses))
-    license_texts = set(map(lambda x: x["text"], licenses))
+    license_ids = tuple(map(lambda x: x["licenseId"], licenses))
+    license_names = tuple(map(lambda x: x["name"], licenses))
+    license_title_texts = tuple(map(lambda x: x["titleText"], licenses))
+    license_texts = tuple(map(lambda x: x["text"], licenses))
