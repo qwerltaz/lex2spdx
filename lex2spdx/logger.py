@@ -90,5 +90,5 @@ def get() -> logging.Logger:
     logging.config.dictConfig(_logging_config)
     logger = logging.getLogger("local_logger")
 
-    logger.info("")
+    logger.info("Hi.")
     return logger
