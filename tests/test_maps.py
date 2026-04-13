@@ -1,6 +1,15 @@
 import lex2spdx.maps
 
 
+def test_map_na():
+    """Should not have uppercase letters."""
+    map_na = lex2spdx.maps.MapNA()
+    for value in map_na.bad_values:
+        assert value == value.lower(), "All values should be lowercase."
+
+    assert map_na.map("Free for non-commercial use") == ""
+
+
 def test_map_exact_id():
     map_exact_id = lex2spdx.maps.MapExactID()
 
