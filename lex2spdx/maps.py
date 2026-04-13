@@ -7,9 +7,10 @@ import rapidfuzz
 
 try:
     from .spdx_license_data import LicenseData
+    from . import logger
 except ImportError:
     from spdx_license_data import LicenseData
-import logger
+    import logger
 
 log = logger.get()
 
@@ -36,7 +37,8 @@ class MapNA(IMap):
 
     def __init__(self):
         super().__init__()
-        self.bad_values = ("unknown", "license.txt")
+        self.bad_values = ("unknown", "license.txt", "proprietary", "closed source", "free for non-commercial use",
+                           "private", "inline_license")
 
     def map(self, license_field: str):
         if license_field.lower() in self.bad_values:
@@ -97,20 +99,34 @@ class MapSubstring(IMap):
 
 
 class MapFuzzyMatch(IMap):
+    """
+    Use fuzzy text matching to find approximately most fitting SPDX ID.
+    Finds best match for the given license field from all SPDX license
+    IDs, names, title texts, and full texts, then picks the one with the highest
+    similarity, if it's above our certainty threshold, otherwise None.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.fuzzy_match_threshold = 90
 
     def map(self, license_field: str):
-        scores_id = rapidfuzz.process.extract(license_field, LicenseData.license_ids,
-                                              processor=rapidfuzz.utils.default_process)
-        scores_name = rapidfuzz.process.extract(license_field, LicenseData.license_names,
+        score_id = rapidfuzz.process.extractOne(license_field, LicenseData.license_ids,
                                                 processor=rapidfuzz.utils.default_process)
-        scores_title_text = rapidfuzz.process.extract(license_field, LicenseData.license_title_texts,
-                                                      processor=rapidfuzz.utils.default_process)
-        scores_text = rapidfuzz.process.extract(license_field, LicenseData.license_texts,
-                                                processor=rapidfuzz.utils.default_process)
+        score_name = rapidfuzz.process.extractOne(license_field, LicenseData.license_names,
+                                                  processor=rapidfuzz.utils.default_process)
+        score_title_text = rapidfuzz.process.extractOne(license_field, LicenseData.license_title_texts,
+                                                        processor=rapidfuzz.utils.default_process)
+        score_text = rapidfuzz.process.extractOne(license_field, LicenseData.license_texts,
+                                                  processor=rapidfuzz.utils.default_process)
 
-        scores = scores_id + scores_name + scores_title_text + scores_text
+        scores = sorted([score_id, score_name, score_title_text, score_text], key=lambda x: x[1], reverse=True)
+        best_match = scores[0]
+        best_match_text, best_match_score, best_match_index = best_match
+        best_match_spdx_id = LicenseData.license_ids[best_match_index]
+        log.debug("Best match '%s' (SPDX ID '%s') for input %s\nfuzzy matching scores: %r", best_match_text,
+                  best_match_spdx_id, license_field, scores)
 
-        best_match_id = scores[0][0]
-        log.debug("Best match '%s' for input %s\nfuzzy matching scores: %r", best_match_id, license_field, scores)
+        return best_match_spdx_id if best_match_score > self.fuzzy_match_threshold else None
 
         return best_match_id
