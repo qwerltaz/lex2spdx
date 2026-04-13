@@ -6,6 +6,7 @@ import pandas as pd
 try:
     from . import cvar
     from . import maps
+    from . import logger
 except ImportError:
     import cvar
     import maps
@@ -70,21 +71,21 @@ class MapPipeline:
                         result_text = "(FAIL)"
                     else:
                         result_text = ""
-                log.debug("%d. %s mapped to %s from %s %s", i, license_map.__class__.__name__, result, row_license,
+                log.info("%d. Map %s mapped to SPDX ID '%s' from input '%s' %s", i, license_map.__class__.__name__, result, row_license,
                           result_text)
 
         return mapped_rows_indices, failed_rows_indices
 
 
 def main():
-    df = load_dataset(300, True)
-    mp = MapPipeline([maps.MapFuzzyMatch()])
+    df = load_dataset(100, True)
+    mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapFuzzyMatch()])
     mapped, failed = mp.run(df)
 
     failed_df = df[[x in failed for x in df["idx"]]]
     mapped_df = df[[x in mapped for x in df["idx"]]]
     failed_set = set(failed_df["license"])
-    log.info("failed to map: ", failed_set)
+    log.info("failed to map: %s", failed_set)
 
 
 if __name__ == "__main__":
