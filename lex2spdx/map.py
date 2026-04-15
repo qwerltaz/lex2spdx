@@ -90,7 +90,7 @@ class MapPipeline:
         return mapped_rows_indices, failed_rows_indices
 
 
-def main():
+def run_map_pipeline():
     df = load_dataset(100, True)
     mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapFuzzyMatch()])
     mapped, failed = mp.run(df)
@@ -101,5 +101,20 @@ def main():
     log.info("failed to map: %s", failed_set)
 
 
+def save_top_distinct_licenses(num: int | None = None) -> None:
+    """
+    Develop a csv file with distinct license fields and their counts in the dataset.
+
+    :param num: Size of sample of the dataset to load. Loads full dataset if None.
+    """
+    df = load_dataset(num, False)
+    distinct_licenses = df["license"].value_counts()
+
+    num_distinct = len(distinct_licenses)
+    save_file_name = cvar.data_dir / f"top_{num_distinct}_popular_licenses.csv"
+    distinct_licenses.to_csv(save_file_name)
+    log.info("Saved top %s popular distinct licenses to %s", num_distinct, save_file_name)
+
+
 if __name__ == "__main__":
-    main()
+    run_map_pipeline()
