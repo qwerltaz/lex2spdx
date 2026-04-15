@@ -1,5 +1,5 @@
 """Individual maps from free-text license fields to SPDX licenses."""
-
+import json
 from abc import ABC, abstractmethod
 from typing import Literal
 
@@ -8,9 +8,11 @@ import rapidfuzz
 try:
     from .spdx_license_data import LicenseData
     from . import logger
+    from . import cvar
 except ImportError:
     from spdx_license_data import LicenseData
     import logger
+    import cvar
 
 log = logger.get()
 
@@ -37,8 +39,8 @@ class MapNA(IMap):
 
     def __init__(self):
         super().__init__()
-        self.bad_values = ("unknown", "license.txt", "proprietary", "closed source", "free for non-commercial use",
-                           "private", "inline_license")
+        with open(cvar.resources_dir / "unknown_license_fields.json", "r", encoding="utf-8") as f:
+            self.bad_values: list = json.load(f)
 
     def map(self, license_field: str):
         if license_field.lower() in self.bad_values:
