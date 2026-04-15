@@ -1,4 +1,5 @@
 """Pipeline runner for mapping PyPI packages to SPDX licenses."""
+import argparse
 import random
 import pandas as pd
 
@@ -116,5 +117,29 @@ def save_top_distinct_licenses(num: int | None = None) -> None:
     log.info("Saved top %s popular distinct licenses to %s", num_distinct, save_file_name)
 
 
+def main(argv: list[str] | None = None):
+    parser = argparse.ArgumentParser(description="Run SPDX mapping pipeline utilities.")
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=["p", "s"],
+        default="p",
+        help="p: run mapping pipeline\ns: save a number of distinct license fields to file."
+    )
+    parser.add_argument(
+        "-n",
+        type=int,
+        default=None,
+        help="Sample size used by `s`.",
+    )
+    args = parser.parse_args(argv)
+
+    match args.command:
+        case "s":
+            save_top_distinct_licenses(args.n)
+        case "p":
+            run_map_pipeline()
+
+
 if __name__ == "__main__":
-    run_map_pipeline()
+    main()
