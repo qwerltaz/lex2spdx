@@ -1,16 +1,12 @@
 """Pipeline runner for mapping PyPI packages to SPDX licenses."""
 import argparse
 import random
+
 import pandas as pd
 
-try:
-    from . import cvar
-    from . import maps
-    from . import logger
-except ImportError:
-    import cvar
-    import maps
-    import logger
+from . import cvar
+from . import logger
+from . import maps
 
 log = logger.get()
 

@@ -1,10 +1,7 @@
 from typing import TypedDict
 from xml.etree import ElementTree
 
-try:
-    from . import cvar
-except ImportError:
-    import cvar
+from . import cvar
 
 _XML_NAMESPACE = "http://www.spdx.org/license"
 

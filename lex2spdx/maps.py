@@ -5,14 +5,9 @@ from typing import Literal
 
 import rapidfuzz
 
-try:
-    from .spdx_license_data import LicenseData
-    from . import logger
-    from . import cvar
-except ImportError:
-    from spdx_license_data import LicenseData
-    import logger
-    import cvar
+from . import cvar
+from . import logger
+from .spdx_license_data import LicenseData
 
 log = logger.get()
 

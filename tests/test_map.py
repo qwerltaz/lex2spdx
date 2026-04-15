@@ -1,7 +1,7 @@
 import pandas as pd
 
-from lex2spdx.maps import IMap
 from lex2spdx.map import MapPipeline, load_dataset
+from lex2spdx.maps import IMap
 
 
 def test_load_dataset():
