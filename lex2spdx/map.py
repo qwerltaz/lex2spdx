@@ -1,5 +1,4 @@
 """Pipeline runner for mapping PyPI packages to SPDX licenses."""
-import json
 import random
 import pandas as pd
 
@@ -50,29 +49,43 @@ class MapPipeline:
 
     def __init__(self, maps: list[maps.IMap]):
         self.maps = maps
+        self.last_mapped_by_map: dict[str, list[tuple[int, str, str]]] = {}
+        self.last_unresolved_by_map: dict[str, list[tuple[int, str]]] = {}
 
     def run(self, df: pd.DataFrame) -> tuple[set, set]:
         mapped_rows_indices = set()
-        failed_rows_indices = set()
+        unresolved_rows_indices = set(df["idx"])
+
+        self.last_mapped_by_map = {}
+        self.last_unresolved_by_map = {}
+
+        rows_by_idx = df.set_index("idx")
 
         for license_map in self.maps:
-            for i, row in df.iterrows():
-                if row["idx"] in mapped_rows_indices:
-                    continue
+            map_name = license_map.__class__.__name__
+            mapped_by_this_map = []
+            unresolved_by_this_map = []
+            next_unresolved_rows_indices = set()
 
+            for idx in unresolved_rows_indices:
+                row = rows_by_idx.loc[idx]
                 row_license = row["license"]
                 result = license_map.map(row_license)
+
                 if result is None:
-                    failed_rows_indices.add(row["idx"])
-                    result_text = "(FAIL)"
+                    next_unresolved_rows_indices.add(idx)
+                    unresolved_by_this_map.append((idx, row_license))
+                    log.info("Map %s did not map input '%s'", map_name, row_license)
                 else:
-                    mapped_rows_indices.add(row["idx"])
-                    if result != row_license:
-                        result_text = "(FAIL)"
-                    else:
-                        result_text = ""
-                log.info("%d. Map %s mapped to SPDX ID '%s' from input '%s' %s", i, license_map.__class__.__name__, result, row_license,
-                          result_text)
+                    mapped_rows_indices.add(idx)
+                    mapped_by_this_map.append((idx, row_license, result))
+                    log.info("Map %s mapped input '%s' to SPDX ID '%s'", map_name, row_license, result)
+
+            self.last_mapped_by_map[map_name] = mapped_by_this_map
+            self.last_unresolved_by_map[map_name] = unresolved_by_this_map
+            unresolved_rows_indices = next_unresolved_rows_indices
+
+        failed_rows_indices = unresolved_rows_indices
 
         return mapped_rows_indices, failed_rows_indices
 
