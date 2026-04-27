@@ -1,4 +1,5 @@
 """Pipeline runner for mapping PyPI packages to SPDX licenses."""
+
 import argparse
 import random
 
@@ -7,6 +8,7 @@ import pandas as pd
 from . import cvar
 from . import logger
 from . import maps
+from . import preprocess
 
 log = logger.get()
 
@@ -66,17 +68,23 @@ class MapPipeline:
 
             for idx in unresolved_rows_indices:
                 row = rows_by_idx.loc[idx]
-                row_license = row["license"]
-                result = license_map.map(row_license)
+                row_license = str(row["license"])
+
+                row_license_normalized = preprocess.normalize_license_field(row_license) or ""
+                log.debug("rapidfuzz default normalization changed %s to %s", row_license_normalized, row_license)
+
+                result = license_map.map(row_license_normalized)
 
                 if result is None:
                     next_unresolved_rows_indices.add(idx)
                     unresolved_by_this_map.append((idx, row_license))
-                    log.info("Map %s did not map input '%s'", map_name, row_license)
+                    log.info("Map %s did not map input '%s'",
+                             map_name, maps.shorten_field(row_license))
                 else:
                     mapped_rows_indices.add(idx)
                     mapped_by_this_map.append((idx, row_license, result))
-                    log.info("Map %s mapped input '%s' to SPDX ID '%s'", map_name, row_license, result)
+                    log.info("Map %s mapped input '%s' to SPDX ID '%s'",
+                             map_name, maps.shorten_field(row_license), result)
 
             self.last_mapped_by_map[map_name] = mapped_by_this_map
             self.last_unresolved_by_map[map_name] = unresolved_by_this_map
@@ -88,7 +96,7 @@ class MapPipeline:
 
 
 def run_map_pipeline():
-    df = load_dataset(100, True)
+    df = load_dataset(1000, True)
     mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapFuzzyMatch()])
     mapped, failed = mp.run(df)
 

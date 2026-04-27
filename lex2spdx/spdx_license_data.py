@@ -2,6 +2,7 @@ from typing import TypedDict
 from xml.etree import ElementTree
 
 from . import cvar
+from . import preprocess
 
 _XML_NAMESPACE = "http://www.spdx.org/license"
 
@@ -45,7 +46,7 @@ def get_licenses() -> list[License]:
         title_element = license_element.find(f"{{{_XML_NAMESPACE}}}text/{{{_XML_NAMESPACE}}}titleText")
         copyright_element = license_element.find(f"{{{_XML_NAMESPACE}}}text/{{{_XML_NAMESPACE}}}copyrightText")
 
-        license_list.append(License(
+        current_license = License(
             isOsiApproved=license_element.get("isOsiApproved", "false").lower() == "true",
             licenseId=license_element.get("licenseId", ""),
             name=license_element.get("name", ""),
@@ -55,7 +56,11 @@ def get_licenses() -> list[License]:
             text=_extract_text(text_element),
             titleText=_extract_text(title_element),
             copyrightText=_extract_text(copyright_element),
-        ))
+        )
+        for key, value in current_license.items():
+            if isinstance(value, str):
+                current_license[key] = preprocess.normalize_license_field(value)
+        license_list.append(current_license)
 
     return license_list
 
