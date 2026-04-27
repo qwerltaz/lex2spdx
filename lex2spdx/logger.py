@@ -1,13 +1,17 @@
 """lex2spdx logger."""
 
-import inspect
+import datetime
 import logging
 import logging.config
 import os
+import sys
+from pathlib import Path
 from typing import Optional
 
 import colorama
 from colorama import Fore, Style
+
+from . import cvar
 
 colorama.init()
 
@@ -79,15 +83,33 @@ _logging_config = {
     "root": {"level": "DEBUG", "handlers": ["stdout", "file"]},
 }
 
+_is_configured = False
+_run_log_file_path: str | None = None
+
+
+def _build_run_log_file_path() -> str:
+    script_stem = Path(sys.argv[0]).stem or "session"
+    run_timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    return str(cvar.logs_dir / f"{script_stem}-{run_timestamp}-{os.getpid()}.log")
+
+
+def _configure_logging_once() -> None:
+    global _is_configured
+    global _run_log_file_path
+
+    if _is_configured:
+        return
+
+    cvar.logs_dir.mkdir(parents=True, exist_ok=True)
+    _run_log_file_path = _build_run_log_file_path()
+    _logging_config["handlers"]["file"]["filename"] = _run_log_file_path
+    logging.config.dictConfig(_logging_config)
+    _is_configured = True
+
 
 def get() -> logging.Logger:
     """Get a configured logger instance."""
-    caller_frame = inspect.stack()[1]
-    caller_filename = os.path.basename(caller_frame.filename)
-    log_file_name = caller_filename.replace(".py", ".log")
-
-    _logging_config["handlers"]["file"]["filename"] = log_file_name
-    logging.config.dictConfig(_logging_config)
+    _configure_logging_once()
     logger = logging.getLogger("local_logger")
 
     logger.info("Hi.")
