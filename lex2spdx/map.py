@@ -75,19 +75,20 @@ class MapPipeline:
                 row_license = str(row["license"])
 
                 row_license_normalized = preprocess.normalize_license_field(row_license) or ""
-                _log.debug("normalization changed %s to %s", row_license, row_license_normalized)
+                _log.debug("normalization changed %s to %s", maps.shorten_field(row_license),
+                           maps.shorten_field(row_license_normalized))
 
                 result = license_map.map(row_license_normalized)
 
                 if result is None:
                     next_unresolved_rows_indices.add(idx)
                     unresolved_by_this_map.append((idx, row_license))
-                    _log.info("Map %s did not map input '%s' (%s)",
+                    _log.info("❌Map %s did not map input '%s' (%s)",
                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license))
                 else:
                     mapped_rows_indices.add(idx)
                     mapped_by_this_map.append((idx, row_license, result))
-                    _log.info("Map %s mapped input '%s' (%s) to SPDX ID '%s'",
+                    _log.info("✅Map %s mapped input '%s' (%s) to SPDX ID '%s'",
                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license),
                               result)
 
