@@ -1,14 +1,14 @@
 [
   "unknown",
-  "license txt",
-  "license",
+  "license.txt",
   "proprietary",
   "closed source",
-  "free for non commercial use",
+  "free for non-commercial use",
   "private",
-  "inline license",
-  "other proprietary license",
+  "inline_license",
+  "other/proprietary license",
   "commercial",
   "eula",
-  "management solutions"
+  "management solutions",
+  "python"
 ]
