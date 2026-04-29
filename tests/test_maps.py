@@ -3,7 +3,7 @@ from _pytest.monkeypatch import MonkeyPatch
 import lex2spdx.maps
 from lex2spdx.maps import MapFuzzyMatch
 from lex2spdx.preprocess import normalize_license_field
-from lex2spdx.spdx_license_data import LicenseData
+from lex2spdx.spdx_license_data import LicenseDataNormalized
 
 
 def test_normalize_license_field():
@@ -70,9 +70,9 @@ def test_map_substring():
 def create_and_patch_fuzzy_map(monkeypatch: MonkeyPatch) -> MapFuzzyMatch:
     map_fuzzy_match = lex2spdx.maps.MapFuzzyMatch()
 
-    monkeypatch.setattr(LicenseData, "license_ids", ["spdx 0", "spdx 1"])
-    monkeypatch.setattr(LicenseData, "license_names", ["name 0", "name 1"])
-    monkeypatch.setattr(LicenseData, "license_texts", ["text 0", "text 1"])
+    monkeypatch.setattr(LicenseDataNormalized, "license_ids", ["spdx 0", "spdx 1"])
+    monkeypatch.setattr(LicenseDataNormalized, "license_names", ["name 0", "name 1"])
+    monkeypatch.setattr(LicenseDataNormalized, "license_texts", ["text 0", "text 1"])
     return map_fuzzy_match
 
 
@@ -80,9 +80,9 @@ def test_map_fuzzy_match_prioritizes_id_name_title_over_full_text(monkeypatch: M
     map_fuzzy_match = create_and_patch_fuzzy_map(monkeypatch)
 
     def fake_extract_one(query, choices, processor=None):
-        if choices is LicenseData.license_ids:
+        if choices is LicenseDataNormalized.license_ids:
             return "spdx 0", 91.0, 0
-        if choices is LicenseData.license_names:
+        if choices is LicenseDataNormalized.license_names:
             return "name 0", 92.0, 0
         return "text 1", 99.0, 1
 
@@ -95,9 +95,9 @@ def test_map_fuzzy_match_uses_text_fallback_only_when_priority_below_threshold(m
     map_fuzzy_match = create_and_patch_fuzzy_map(monkeypatch)
 
     def fake_extract_one(query, choices, processor=None):
-        if choices is LicenseData.license_ids:
+        if choices is LicenseDataNormalized.license_ids:
             return "spdx 0", 70.0, 0
-        if choices is LicenseData.license_names:
+        if choices is LicenseDataNormalized.license_names:
             return "name 0", 80.0, 0
         return "text 1", 95.0, 1
 

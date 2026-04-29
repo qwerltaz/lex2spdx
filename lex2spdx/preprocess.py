@@ -17,4 +17,6 @@ def normalize_license_field(text: str | None) -> str | None:
 
     text_normalized = re.sub(r"\s+", " ", text_normalized.strip())
 
+    text_normalized = re.sub(r"v(\d)", r"\1", text_normalized)
+
     return text_normalized

@@ -26,7 +26,7 @@ def _extract_text(element: ElementTree.Element | None) -> str:
     return " ".join("".join(element.itertext()).split())
 
 
-def get_licenses() -> list[License]:
+def get_licenses(normalize: bool = False) -> list[License]:
     """Parse SPDX license XML files and return a list of License dictionaries with their information."""
     license_list = []
     for xml_file in cvar.spdx_license_list_dir.glob("*.xml"):
@@ -57,16 +57,28 @@ def get_licenses() -> list[License]:
             titleText=_extract_text(title_element),
             copyrightText=_extract_text(copyright_element),
         )
-        for key, value in current_license.items():
-            if isinstance(value, str):
-                current_license[key] = preprocess.normalize_license_field(value)
+
+        if normalize:
+            for key, value in current_license.items():
+                if isinstance(value, str):
+                    current_license[key] = preprocess.normalize_license_field(value)
         license_list.append(current_license)
 
     return license_list
 
 
 class LicenseData:
+    """Grouped data of SPDX licenses."""
     licenses = get_licenses()
+    license_ids = tuple(map(lambda x: x["licenseId"], licenses))
+    license_names = tuple(map(lambda x: x["name"], licenses))
+    license_title_texts = tuple(map(lambda x: x["titleText"], licenses))
+    license_texts = tuple(map(lambda x: x["text"], licenses))
+
+
+class LicenseDataNormalized:
+    """Grouped data of SPDX licenses with all fields normalized."""
+    licenses = get_licenses(normalize=True)
     license_ids = tuple(map(lambda x: x["licenseId"], licenses))
     license_names = tuple(map(lambda x: x["name"], licenses))
     license_title_texts = tuple(map(lambda x: x["titleText"], licenses))

@@ -1,6 +1,5 @@
 """Individual maps from free-text license fields to SPDX licenses."""
 import json
-import re
 from abc import ABC, abstractmethod
 from typing import Literal
 
@@ -8,9 +7,9 @@ import rapidfuzz
 
 from . import cvar
 from . import logger
-from .spdx_license_data import LicenseData
+from .spdx_license_data import LicenseData, LicenseDataNormalized
 
-log = logger.get()
+_log = logger.get()
 
 
 def shorten_field(text_field: str | None) -> str | None:
@@ -57,7 +56,7 @@ class MapExactID(IMap):
     """Map to SPDX ID only if the license exactly matches an SPDX identifier."""
 
     def map(self, license_field: str):
-        for license_spdx in LicenseData.licenses:
+        for license_spdx in LicenseDataNormalized.licenses:
             if license_field == license_spdx["licenseId"]:
                 return license_spdx["licenseId"]
 
@@ -71,10 +70,11 @@ class MapExactMatch(IMap):
     """
 
     def map(self, license_field: str):
-        for license_spdx in LicenseData.licenses:
+        for license_spdx in LicenseDataNormalized.licenses:
             text = license_spdx["text"]
             name = license_spdx["name"]
-            candidates = [text, name]
+            id = license_spdx["licenseId"]
+            candidates = [text, name, id]
 
             for candidate in candidates:
                 if candidate and license_field == candidate:
@@ -90,7 +90,7 @@ class MapSubstring(IMap):
     """
 
     def map(self, license_field: str):
-        for license_spdx in LicenseData.licenses:
+        for license_spdx in LicenseDataNormalized.licenses:
             text = license_spdx["text"]
             name = license_spdx["name"]
 
@@ -119,21 +119,19 @@ class MapFuzzyMatch(IMap):
     def map(self, license_field: str):
         score_id = rapidfuzz.process.extractOne(
             license_field,
-            LicenseData.license_ids,
-            processor=rapidfuzz.utils.default_process,
+            LicenseDataNormalized.license_ids,
         )
         score_name = rapidfuzz.process.extractOne(
             license_field,
-            LicenseData.license_names,
-            processor=rapidfuzz.utils.default_process,
+            LicenseDataNormalized.license_names,
         )
 
         priority_scores = sorted([score_id, score_name], key=lambda x: x[1], reverse=True)
         best_priority_text, best_priority_score, best_priority_index = priority_scores[0]
-        best_priority_spdx_id = LicenseData.license_ids[best_priority_index]
+        best_priority_spdx_id = LicenseDataNormalized.license_ids[best_priority_index]
 
-        if best_priority_score > self.fuzzy_match_threshold:
-            log.debug(
+        if best_priority_score >= self.fuzzy_match_threshold:
+            _log.debug(
                 "Best priority fuzzy match '%s' (SPDX ID '%s') for input %s\npriority fuzzy scores: %r",
                 shorten_field(best_priority_text),
                 best_priority_spdx_id,
@@ -144,13 +142,12 @@ class MapFuzzyMatch(IMap):
 
         score_text = rapidfuzz.process.extractOne(
             license_field,
-            LicenseData.license_texts,
-            processor=rapidfuzz.utils.default_process,
+            LicenseDataNormalized.license_texts,
         )
         best_text_match, best_text_score, best_text_index = score_text
         best_text_spdx_id = LicenseData.license_ids[best_text_index]
 
-        log.debug(
+        _log.debug(
             "Priority fuzzy below threshold for input %s\npriority scores: %r\n"
             "text fallback best match '%s' (SPDX ID '%s') with score %.2f",
             shorten_field(license_field),

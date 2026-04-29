@@ -10,17 +10,21 @@ from . import logger
 from . import maps
 from . import preprocess
 
-log = logger.get()
+_log = logger.get()
 
 
-def load_dataset(sample_size: int | None = None, random_start: bool = False) -> pd.DataFrame:
+def load_dataset(sample_size: int | None = None, random_start: bool = False,
+                 path: str | None = None) -> pd.DataFrame:
     """
     Loads the PyPI metadata dataset and drops empty license fields.
 
+    :param path: The path to the dataset CSV file.
     :param sample_size: The number of rows to load instead of full dataset. If None, load the full dataset.
     :param random_start: If True, start sampling at random position in dataset. Only used if sample_size is not None.
     :return: The loaded dataset.
     """
+    path = path or cvar.pypi_versions_dataset_path
+
     if sample_size is not None and random_start:
         # About 10% of the true dataset size, for faster random sampling.
         alleged_dataset_size = 200000
@@ -31,13 +35,13 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False) -> 
         start_row = random.randint(0, alleged_dataset_size)
 
         df = pd.read_csv(
-            cvar.pypi_versions_dataset_path,
+            path,
             low_memory=False,
             skiprows=range(1, start_row),
             nrows=sample_size,
         )
     else:
-        df = pd.read_csv(cvar.pypi_versions_dataset_path, low_memory=False, nrows=sample_size)
+        df = pd.read_csv(path, low_memory=False, nrows=sample_size)
 
     df.drop(["Unnamed: 0"], axis=1, inplace=True)
     df.dropna(subset=["license"], inplace=True)
@@ -71,20 +75,21 @@ class MapPipeline:
                 row_license = str(row["license"])
 
                 row_license_normalized = preprocess.normalize_license_field(row_license) or ""
-                log.debug("rapidfuzz default normalization changed %s to %s", row_license_normalized, row_license)
+                _log.debug("normalization changed %s to %s", row_license, row_license_normalized)
 
                 result = license_map.map(row_license_normalized)
 
                 if result is None:
                     next_unresolved_rows_indices.add(idx)
                     unresolved_by_this_map.append((idx, row_license))
-                    log.info("Map %s did not map input '%s'",
-                             map_name, maps.shorten_field(row_license))
+                    _log.info("Map %s did not map input '%s' (%s)",
+                              map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license))
                 else:
                     mapped_rows_indices.add(idx)
                     mapped_by_this_map.append((idx, row_license, result))
-                    log.info("Map %s mapped input '%s' to SPDX ID '%s'",
-                             map_name, maps.shorten_field(row_license), result)
+                    _log.info("Map %s mapped input '%s' (%s) to SPDX ID '%s'",
+                              map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license),
+                              result)
 
             self.last_mapped_by_map[map_name] = mapped_by_this_map
             self.last_unresolved_by_map[map_name] = unresolved_by_this_map
@@ -95,54 +100,32 @@ class MapPipeline:
         return mapped_rows_indices, failed_rows_indices
 
 
-def run_map_pipeline():
-    df = load_dataset(1000, True)
+def run_map_pipeline(on_test_dataset: bool = False):
+    if on_test_dataset:
+        df = load_dataset(9999, False, cvar.data_dir / "pypi/test/test.csv")
+    else:
+        df = load_dataset(300, True)
+
     mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapFuzzyMatch()])
     mapped, failed = mp.run(df)
 
     failed_df = df[[x in failed for x in df["idx"]]]
     mapped_df = df[[x in mapped for x in df["idx"]]]
     failed_set = set(failed_df["license"])
-    log.info("failed to map: %s", failed_set)
-
-
-def save_top_distinct_licenses(num: int | None = None) -> None:
-    """
-    Develop a csv file with distinct license fields and their counts in the dataset.
-
-    :param num: Size of sample of the dataset to load. Loads full dataset if None.
-    """
-    df = load_dataset(num, False)
-    distinct_licenses = df["license"].value_counts()
-
-    num_distinct = len(distinct_licenses)
-    save_file_name = cvar.data_dir / f"top_{num_distinct}_popular_licenses.csv"
-    distinct_licenses.to_csv(save_file_name)
-    log.info("Saved top %s popular distinct licenses to %s", num_distinct, save_file_name)
+    _log.info("failed to map: %s", failed_set)
 
 
 def main(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(description="Run SPDX mapping pipeline utilities.")
+
     parser.add_argument(
-        "command",
-        nargs="?",
-        choices=["p", "s"],
-        default="p",
-        help="p: run mapping pipeline\ns: save a number of distinct license fields to file."
-    )
-    parser.add_argument(
-        "-n",
-        type=int,
-        default=None,
-        help="Sample size used by `s`.",
+        "-t",
+        action="store_true",
+        help="Whether to run mapping pipeline on the test dataset.",
     )
     args = parser.parse_args(argv)
 
-    match args.command:
-        case "s":
-            save_top_distinct_licenses(args.n)
-        case "p":
-            run_map_pipeline()
+    run_map_pipeline(args.t)
 
 
 if __name__ == "__main__":
