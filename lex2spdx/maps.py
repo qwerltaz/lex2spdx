@@ -43,12 +43,12 @@ class MapNA(IMap):
     def __init__(self):
         super().__init__()
         with open(cvar.resources_dir / "unknown_license_fields.json", "r", encoding="utf-8") as f:
-            self.bad_values: set = set(json.load(f))
+            self.bad_values: set[str] = set(json.load(f))
         self.bad_values = set(map(preprocess.normalize_license_field, self.bad_values))
         print(self.bad_values)
 
     def map(self, license_field: str):
-        if license_field.lower() in self.bad_values:
+        if license_field in self.bad_values:
             return ""
         else:
             return None
@@ -160,3 +160,5 @@ class MapFuzzyMatch(IMap):
         )
 
         return best_text_spdx_id if best_text_score > self.fuzzy_match_threshold else None
+
+MapFuzzyMatch().map("GNU AGPLv3")

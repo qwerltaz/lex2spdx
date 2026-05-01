@@ -105,7 +105,7 @@ def run_map_pipeline(on_test_dataset: bool = False):
     if on_test_dataset:
         df = load_dataset(9999, False, cvar.data_dir / "pypi/test/test.csv")
     else:
-        df = load_dataset(300, True)
+        df = load_dataset(500, True)
 
     mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapFuzzyMatch()])
     mapped, failed = mp.run(df)
