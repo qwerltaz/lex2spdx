@@ -116,17 +116,30 @@ class MapFuzzyMatch(IMap):
 
     def __init__(self):
         super().__init__()
-        self.fuzzy_match_threshold = 90
+        self.fuzzy_match_threshold = 89.5
+        self.scorer = rapidfuzz.fuzz_py.WRatio
+
+    def fuzzy_extract_one(self, license_field: str, choices: tuple[str, ...]):
+        ret = rapidfuzz.process.extractOne(
+            license_field,
+            choices,
+            scorer=self.scorer,
+        )
+
+        return ret
+
+    def fuzzy_extract(self, license_field: str, choices: tuple[str, ...]):
+        ret = rapidfuzz.process.extract(
+            license_field,
+            choices,
+            scorer=self.scorer,
+        )
+
+        return ret
 
     def map(self, license_field: str):
-        score_id = rapidfuzz.process.extractOne(
-            license_field,
-            LicenseDataNormalized.license_ids,
-        )
-        score_name = rapidfuzz.process.extractOne(
-            license_field,
-            LicenseDataNormalized.license_names,
-        )
+        score_id = self.fuzzy_extract_one(license_field, LicenseDataNormalized.license_ids)
+        score_name = self.fuzzy_extract_one(license_field, LicenseDataNormalized.license_names)
 
         priority_scores = sorted([score_id, score_name], key=lambda x: x[1], reverse=True)
         best_priority_text, best_priority_score, best_priority_index = priority_scores[0]
@@ -142,11 +155,11 @@ class MapFuzzyMatch(IMap):
             )
             return best_priority_spdx_id
 
-        score_text = rapidfuzz.process.extractOne(
-            license_field,
-            LicenseDataNormalized.license_texts,
-        )
-        best_text_match, best_text_score, best_text_index = score_text
+        score_text = self.fuzzy_extract_one(license_field, LicenseDataNormalized.license_texts)
+        score_title_text = self.fuzzy_extract_one(license_field, LicenseDataNormalized.license_title_texts)
+
+        priority_scores2 = sorted([score_text, score_title_text], key=lambda x: x[1], reverse=True)
+        best_text_match, best_text_score, best_text_index = priority_scores2[0]
         best_text_spdx_id = LicenseData.license_ids[best_text_index]
 
         _log.debug(
@@ -161,4 +174,24 @@ class MapFuzzyMatch(IMap):
 
         return best_text_spdx_id if best_text_score > self.fuzzy_match_threshold else None
 
-MapFuzzyMatch().map("GNU AGPLv3")
+    def debug_map(self, license_field: str):
+        for inputs in (LicenseDataNormalized.license_ids, LicenseDataNormalized.license_names,
+                       LicenseDataNormalized.license_title_texts):
+            scores = self.fuzzy_extract(license_field, inputs)
+            _log.debug(
+                "Fuzzy match scores for input '%s'\nagainst %s:\n%r",
+                shorten_field(license_field),
+                inputs,
+                scores,
+            )
+
+
+def _():
+    test_field = "GNU General Public License v3.0"
+    test_field = preprocess.normalize_license_field(test_field)
+    # MapFuzzyMatch().debug_map(test_field)
+    print(MapFuzzyMatch().map(test_field))
+
+
+if __name__ == '__main__':
+    _()
