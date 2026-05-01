@@ -101,13 +101,13 @@ class MapPipeline:
         return mapped_rows_indices, failed_rows_indices
 
 
-def run_map_pipeline(on_test_dataset: bool = False):
+def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = None):
     if on_test_dataset:
         df = load_dataset(9999, False, cvar.data_dir / "pypi/test/test.csv")
     else:
-        df = load_dataset(500, True)
+        df = load_dataset(sample_size, True)
 
-    mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapFuzzyMatch()])
+    mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapSubstring(), maps.MapFuzzyMatch()])
     mapped, failed = mp.run(df)
 
     failed_df = df[[x in failed for x in df["idx"]]]
@@ -124,9 +124,15 @@ def main(argv: list[str] | None = None):
         action="store_true",
         help="Whether to run mapping pipeline on the test dataset.",
     )
+    parser.add_argument(
+        "-s",
+        type=int,
+        default=500,
+        help="Sample size if running on the default dataset.",
+    )
     args = parser.parse_args(argv)
 
-    run_map_pipeline(args.t)
+    run_map_pipeline(args.t, args.s)
 
 
 if __name__ == "__main__":
