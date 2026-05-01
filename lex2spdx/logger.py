@@ -89,7 +89,7 @@ _run_log_file_path: str | None = None
 
 def _build_run_log_file_path() -> str:
     script_stem = Path(sys.argv[0]).stem or "session"
-    run_timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
+    run_timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     return str(cvar.logs_dir / f"{script_stem}-{run_timestamp}-{os.getpid()}.log")
 
 
