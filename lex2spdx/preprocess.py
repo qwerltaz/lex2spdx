@@ -1,6 +1,15 @@
 import re
+from typing import overload
 
 import rapidfuzz
+
+
+@overload
+def normalize_license_field(text: None) -> None: ...
+
+
+@overload
+def normalize_license_field(text: str) -> str: ...
 
 
 def normalize_license_field(text: str | None) -> str | None:
