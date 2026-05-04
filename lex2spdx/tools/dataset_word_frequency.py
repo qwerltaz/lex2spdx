@@ -6,7 +6,7 @@ from lex2spdx import map, preprocess, cvar
 from tqdm import tqdm
 
 sample_size = int(1e6)
-df = map.load_dataset(sample_size)
+df = map.load_dataset(sample_size, True)
 
 word_freq = {}
 for license_field in tqdm(df["license"]):
