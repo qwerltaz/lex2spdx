@@ -1,7 +1,15 @@
+import json
 import re
 from typing import overload
 
 import rapidfuzz
+
+from lex2spdx import cvar
+
+_REMOVE_STOP_WORDS = True
+
+with open(cvar.resources_dir / "stop-words.json", "r", encoding="utf-8") as f:
+    _stop_words = set(json.load(f))
 
 
 @overload
@@ -28,5 +36,11 @@ def normalize_license_field(text: str | None) -> str | None:
 
     # gplv3 -> gpl 3 0
     text_normalized = re.sub(r"gplv(\d)", r"gpl \1 0", text_normalized)
+
+    # remove stop words
+    if _REMOVE_STOP_WORDS:
+        words = text_normalized.split()
+        words = [word for word in words if word not in _stop_words]
+        text_normalized = " ".join(words)
 
     return text_normalized
