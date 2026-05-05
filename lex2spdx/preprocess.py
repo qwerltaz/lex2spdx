@@ -37,7 +37,7 @@ def normalize_license_field(text: str | None) -> str | None:
 
     text_normalized = rapidfuzz.utils.default_process(text)
 
-    # v1.0 -> ␣1.0.
+    # v1.0 -> ␣1.0. (This is how SPDX specifies license versions)
     text_normalized = re.sub(r"v(\d)", r" \1", text_normalized)
 
     text_normalized = re.sub(r"\s+", " ", text_normalized.strip())
