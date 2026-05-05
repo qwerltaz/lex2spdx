@@ -37,12 +37,14 @@ def normalize_license_field(text: str | None) -> str | None:
 
     text_normalized = rapidfuzz.utils.default_process(text)
 
+    # v1.0 -> ␣1.0.
+    text_normalized = re.sub(r"v(\d)", r" \1", text_normalized)
+
     text_normalized = re.sub(r"\s+", " ", text_normalized.strip())
 
-    # gplv3 -> gpl 3 0
-    text_normalized = re.sub(r"gplv(\d)", r"gpl \1 0", text_normalized)
+    # gpl3 -> gpl 3 0.
+    text_normalized = re.sub(r"gpl(\d)", r"gpl \1", text_normalized)
 
-    # remove stop words
     if _REMOVE_STOP_WORDS:
         words = text_normalized.split()
         words = [word for word in words if word not in _stop_words]
