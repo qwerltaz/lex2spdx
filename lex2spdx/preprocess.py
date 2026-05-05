@@ -6,7 +6,9 @@ import rapidfuzz
 
 from lex2spdx import cvar
 
-_REMOVE_STOP_WORDS = True
+_REMOVE_STOP_WORDS = False
+_TRUNCATE_LONG_TEXTS = True
+_TRUNCATE_MAX_LENGTH = 1000
 
 with open(cvar.resources_dir / "stop-words.json", "r", encoding="utf-8") as f:
     _stop_words = set(json.load(f))
@@ -29,6 +31,9 @@ def normalize_license_field(text: str | None) -> str | None:
 
     if text.lower().startswith("license ::"):
         text = text.split("::")[-1].strip()
+
+    if _TRUNCATE_LONG_TEXTS and len(text) > _TRUNCATE_MAX_LENGTH:
+        text = text[:_TRUNCATE_MAX_LENGTH]
 
     text_normalized = rapidfuzz.utils.default_process(text)
 
