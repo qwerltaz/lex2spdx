@@ -6,10 +6,6 @@ import rapidfuzz
 
 from lex2spdx import cvar
 
-_REMOVE_STOP_WORDS = True
-_TRUNCATE_LONG_TEXTS = True
-_TRUNCATE_MAX_LENGTH = 1000
-
 with open(cvar.resources_dir / "stop-words.json", "r", encoding="utf-8") as f:
     _stop_words = set(json.load(f))
 
@@ -22,8 +18,16 @@ def normalize_license_field(text: None) -> None: ...
 def normalize_license_field(text: str) -> str: ...
 
 
-def normalize_license_field(text: str | None) -> str | None:
-    """Normalize whitespace, spacing, and common wording variants in free-text license fields."""
+def normalize_license_field(text: str | None, remove_stop_words: bool = True, truncate_long_texts: bool = True,
+                            truncate_max_length: int = 1000) -> str | None:
+    """
+    Normalize whitespace, spacing, and common wording variants in free-text license fields.
+
+    :param text: The input text to normalize
+    :param remove_stop_words: Whether to erase some unrelated words that do not alter classification.
+    :param truncate_long_texts: Whether to truncate text if too long.
+    :param truncate_max_length: Length to which truncate the text, if truncation is enabled.
+    """
     if text is None:
         return None
     if text == "":
@@ -32,8 +36,8 @@ def normalize_license_field(text: str | None) -> str | None:
     if text.lower().startswith("license ::"):
         text = text.split("::")[-1].strip()
 
-    if _TRUNCATE_LONG_TEXTS and len(text) > _TRUNCATE_MAX_LENGTH:
-        text = text[:_TRUNCATE_MAX_LENGTH]
+    if truncate_long_texts and len(text) > truncate_max_length:
+        text = text[:truncate_max_length]
 
     text_normalized = rapidfuzz.utils.default_process(text)
 
@@ -45,7 +49,7 @@ def normalize_license_field(text: str | None) -> str | None:
     # gpl3 -> gpl 3 0.
     text_normalized = re.sub(r"gpl(\d)", r"gpl \1", text_normalized)
 
-    if _REMOVE_STOP_WORDS:
+    if remove_stop_words:
         words = text_normalized.split()
         words = [word for word in words if word not in _stop_words]
         text_normalized = " ".join(words)
