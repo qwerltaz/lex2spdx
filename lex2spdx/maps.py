@@ -42,7 +42,7 @@ class MapNA(IMap):
 
     def __init__(self):
         super().__init__()
-        with open(cvar.resources_dir / "unknown_license_fields.json", "r", encoding="utf-8") as f:
+        with open(cvar.resources_dir / "unknown-license-fields.json", "r", encoding="utf-8") as f:
             self.bad_values: set[str] = set(json.load(f))
         self.bad_values = set(map(preprocess.normalize_license_field, self.bad_values))
         print(self.bad_values)
