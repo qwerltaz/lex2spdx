@@ -79,7 +79,7 @@ def create_and_patch_fuzzy_map(monkeypatch: MonkeyPatch) -> MapFuzzyMatch:
 def test_map_fuzzy_match_prioritizes_id_name_title_over_full_text(monkeypatch: MonkeyPatch):
     map_fuzzy_match = create_and_patch_fuzzy_map(monkeypatch)
 
-    def fake_extract_one(query, choices, processor=None):
+    def fake_extract_one(query, choices, processor=None, scorer=None):
         if choices is LicenseDataNormalized.license_ids:
             return "spdx 0", 91.0, 0
         if choices is LicenseDataNormalized.license_names:
@@ -94,7 +94,7 @@ def test_map_fuzzy_match_prioritizes_id_name_title_over_full_text(monkeypatch: M
 def test_map_fuzzy_match_uses_text_fallback_only_when_priority_below_threshold(monkeypatch: MonkeyPatch):
     map_fuzzy_match = create_and_patch_fuzzy_map(monkeypatch)
 
-    def fake_extract_one(query, choices, processor=None):
+    def fake_extract_one(query, choices, processor=None, scorer=None):
         if choices is LicenseDataNormalized.license_ids:
             return "spdx 0", 70.0, 0
         if choices is LicenseDataNormalized.license_names:

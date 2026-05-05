@@ -160,7 +160,7 @@ class MapFuzzyMatch(IMap):
 
         priority_scores2 = sorted([score_text, score_title_text], key=lambda x: x[1], reverse=True)
         best_text_match, best_text_score, best_text_index = priority_scores2[0]
-        best_text_spdx_id = LicenseData.license_ids[best_text_index]
+        best_text_spdx_id = LicenseDataNormalized.license_ids[best_text_index]
 
         _log.debug(
             "Priority fuzzy below threshold for input %s\npriority scores: %r\n"
