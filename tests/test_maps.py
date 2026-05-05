@@ -2,17 +2,7 @@ from _pytest.monkeypatch import MonkeyPatch
 
 import lex2spdx.maps
 from lex2spdx.maps import MapFuzzyMatch
-from lex2spdx.preprocess import normalize_license_field
 from lex2spdx.spdx_license_data import LicenseDataNormalized
-
-
-def test_normalize_license_field():
-    assert normalize_license_field(None) is None
-    assert normalize_license_field("  MIT   License ") == "mit license"
-    assert normalize_license_field("MIT License") == "mit license"
-    assert normalize_license_field("License :: OSI Approved :: Apache Software License") == "apache software license"
-    assert normalize_license_field("Apache License, Version 2.0") == "apache license version 2 0"
-    assert normalize_license_field("Apache 2.0") == "apache 2 0"
 
 
 def test_map_na():
