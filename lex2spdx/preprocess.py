@@ -6,7 +6,7 @@ import rapidfuzz
 
 from lex2spdx import cvar
 
-_REMOVE_STOP_WORDS = False
+_REMOVE_STOP_WORDS = True
 _TRUNCATE_LONG_TEXTS = True
 _TRUNCATE_MAX_LENGTH = 1000
 
