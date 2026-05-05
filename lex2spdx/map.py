@@ -1,7 +1,9 @@
 """Pipeline runner for mapping PyPI packages to SPDX licenses."""
 
 import argparse
+import os
 import random
+from datetime import datetime
 
 import pandas as pd
 
@@ -54,6 +56,7 @@ class MapPipeline:
         self.maps = maps
         self.last_mapped_by_map: dict[str, list[tuple[int, str, str]]] = {}
         self.last_unresolved_by_map: dict[str, list[tuple[int, str]]] = {}
+        self.mapped_idx_to_spdx_id: dict[int, str] = {}
 
     def run(self, df: pd.DataFrame) -> tuple[set, set]:
         mapped_rows_indices = set()
@@ -61,6 +64,7 @@ class MapPipeline:
 
         self.last_mapped_by_map = {}
         self.last_unresolved_by_map = {}
+        self.mapped_idx_to_spdx_id = {}
 
         rows_by_idx = df.set_index("idx")
 
@@ -88,6 +92,7 @@ class MapPipeline:
                 else:
                     mapped_rows_indices.add(idx)
                     mapped_by_this_map.append((idx, row_license, result))
+                    self.mapped_idx_to_spdx_id[idx] = result
                     _log.info("✅Map %s mapped input '%s' (%s) to SPDX ID '%s'",
                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license),
                               result)
@@ -114,6 +119,21 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
     mapped_df = df[[x in mapped for x in df["idx"]]]
     failed_set = set(failed_df["license"])
     _log.info("failed to map: %s", failed_set)
+
+    mapped_results = []
+    for i, (idx, spdx_id) in enumerate(sorted(mp.mapped_idx_to_spdx_id.items())):
+        mapped_results.append({
+            "dataset_index": idx,
+            "spdx_id": spdx_id,
+        })
+
+    mapped_results_df = pd.DataFrame(mapped_results)
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    output_dir = cvar.data_dir / "output"
+    output_path = output_dir / f"mapped-{timestamp}.csv"
+    os.makedirs(output_dir, exist_ok=True)
+    mapped_results_df.to_csv(output_path, index=True)
+    _log.info("Saved %d mapped results to %s", len(mapped_results_df), output_path)
 
 
 def main(argv: list[str] | None = None):

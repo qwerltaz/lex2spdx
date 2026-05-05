@@ -1,8 +1,8 @@
 import argparse
 
 from lex2spdx import cvar
-from lex2spdx.map import load_dataset
 from lex2spdx import logger
+from lex2spdx.map import load_dataset
 
 _log = logger.get()
 

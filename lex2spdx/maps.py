@@ -7,7 +7,7 @@ import rapidfuzz
 
 from . import cvar, preprocess
 from . import logger
-from .spdx_license_data import LicenseData, LicenseDataNormalized
+from .spdx_license_data import LicenseDataNormalized
 
 _log = logger.get()
 
@@ -45,7 +45,7 @@ class MapNA(IMap):
         with open(cvar.resources_dir / "unknown-license-fields.json", "r", encoding="utf-8") as f:
             self.bad_values: set[str] = set(json.load(f))
         self.bad_values = set(map(preprocess.normalize_license_field, self.bad_values))
-        print(self.bad_values)
+        _log.debug("MapNA final bad values: %s", self.bad_values)
 
     def map(self, license_field: str):
         if license_field in self.bad_values:
