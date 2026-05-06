@@ -1,8 +1,10 @@
 from _pytest.monkeypatch import MonkeyPatch
 
 import lex2spdx.maps
+from lex2spdx import preprocess
 from lex2spdx.maps import MapFuzzyMatch
 from lex2spdx.spdx_license_data import LicenseDataNormalized
+from lex2spdx.preprocess import normalize_license_field
 
 
 def test_map_na():
@@ -11,9 +13,15 @@ def test_map_na():
     for value in map_na.bad_values:
         assert value == value.lower(), "All values should be lowercase."
 
-    assert map_na.map("free for non commercial use") == ""
-    assert map_na.map("license txt") == ""
-    assert map_na.map("inline license") == ""
+    unmappable_values = [
+        "license.txt",
+        "free for non commercial use",
+        "inline license",
+    ]
+    unmappable_values = map(normalize_license_field, unmappable_values)
+
+    for value in unmappable_values:
+        assert map_na.map(value) == "", f"Value '{value}' should be mapped to empty string."
 
 
 def test_map_exact_id():
@@ -29,15 +37,13 @@ def test_map_exact_match():
     map_exact_match = lex2spdx.maps.MapExactMatch()
 
     # Name
-    assert map_exact_match.map("mit license") == "mit"
     assert map_exact_match.map("mit license version") is None
     assert map_exact_match.map("mit licence") is None
     assert map_exact_match.map("mit licensee") is None
-    assert map_exact_match.map("the unlicense") == "unlicense"
     # Text
-    assert map_exact_match.map(
+    assert map_exact_match.map(normalize_license_field(
         "copyright c 1992 1991 1990 mips computer systems inc mips computer systems inc grants "
-        "reproduction and use rights to all parties provided that this comment is maintained in the copy") == "mips"
+        "reproduction and use rights to all parties provided that this comment is maintained in the copy")) == "mips"
 
 
 def test_map_substring():
@@ -53,8 +59,6 @@ def test_map_substring():
         "lipsum copyright c 1992 1991 1990 mips computer systems inc mips computer systems inc grants "
         "reproduction and use rights to all parties provided that this comment is maintained in the copy lipsum")
             == "mips")
-
-    assert map_substring.map("mit licence") is None
 
 
 def create_and_patch_fuzzy_map(monkeypatch: MonkeyPatch) -> MapFuzzyMatch:

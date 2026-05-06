@@ -187,7 +187,7 @@ class MapFuzzyMatch(IMap):
 
 
 def _():
-    test_field = "GNU General Public License v3.0"
+    test_field = "unlicense"
     test_field = preprocess.normalize_license_field(test_field)
     # MapFuzzyMatch().debug_map(test_field)
     print(MapFuzzyMatch().map(test_field))

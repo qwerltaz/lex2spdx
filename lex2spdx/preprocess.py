@@ -11,11 +11,11 @@ with open(cvar.resources_dir / "stop-words.json", "r", encoding="utf-8") as f:
 
 
 @overload
-def normalize_license_field(text: None) -> None: ...
+def normalize_license_field(text: None, *args, **kwargs) -> None: ...
 
 
 @overload
-def normalize_license_field(text: str) -> str: ...
+def normalize_license_field(text: str, *args, **kwargs) -> str: ...
 
 
 def normalize_license_field(text: str | None, remove_stop_words: bool = True, truncate_long_texts: bool = True,
