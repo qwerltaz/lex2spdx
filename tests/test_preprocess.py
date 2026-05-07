@@ -10,6 +10,7 @@ def test_normalize_license_field():
     assert normalize_license_field("MIT License") == "mit"
 
     assert normalize_license_field("License :: OSI Approved :: Apache Software License") == "apache"
+    assert normalize_license_field("OSI Approved :: Apache Software License") == "apache"
 
     assert normalize_license_field("Apache License, Version 2.0") == "apache 2 0"
     assert normalize_license_field("Apache 2.0") == "apache 2 0"

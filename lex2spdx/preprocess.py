@@ -33,7 +33,7 @@ def normalize_license_field(text: str | None, remove_stop_words: bool = True, tr
     if text == "":
         return ""
 
-    if text.lower().startswith("license ::"):
+    if text.lower().startswith("license ::") or text.lower().startswith("osi approved ::"):
         text = text.split("::")[-1].strip()
 
     if truncate_long_texts and len(text) > truncate_max_length:
