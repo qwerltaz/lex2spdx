@@ -16,13 +16,15 @@ _log = logger.get()
 
 
 def load_dataset(sample_size: int | None = None, random_start: bool = False,
-                 path: str | None = None) -> pd.DataFrame:
+                 path: str | None = None, drop_duplicate_licenses: bool = False) -> pd.DataFrame:
     """
     Loads the PyPI metadata dataset and drops empty license fields.
 
     :param path: The path to the dataset CSV file.
     :param sample_size: The number of rows to load instead of full dataset. If None, load the full dataset.
     :param random_start: If True, start sampling at random position in dataset. Only used if sample_size is not None.
+    :parap drop_duplicate_licenses: Whether to drop duplicate licenses and keep only entires with unique licenses (
+    arbitrary drop order).
     :return: The loaded dataset.
     """
     path = path or cvar.pypi_versions_dataset_path
@@ -47,6 +49,12 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False,
 
     df.drop(["Unnamed: 0"], axis=1, inplace=True)
     df.dropna(subset=["license"], inplace=True)
+
+    df.drop_duplicates(subset=["name"], inplace=True)
+    if drop_duplicate_licenses:
+        df.drop_duplicates(subset=["license"], inplace=True)
+        _log.warning("Dropping duplicate licenses from dataset.")
+
     return df
 
 
@@ -79,7 +87,7 @@ class MapPipeline:
                 row_license = str(row["license"])
 
                 row_license_normalized = preprocess.normalize_license_field(row_license) or ""
-                _log.debug("normalization changed %s to %s", maps.shorten_field(row_license),
+                _log.debug("normalization changed '%s' to '%s'", maps.shorten_field(row_license),
                            maps.shorten_field(row_license_normalized))
 
                 result = license_map.map(row_license_normalized)
@@ -106,11 +114,20 @@ class MapPipeline:
         return mapped_rows_indices, failed_rows_indices
 
 
-def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = None):
+def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = None) -> None:
+    """
+    Run the mapping pipeline on the PyPI dataset and save the mapped results to a CSV file.
+
+    :param on_test_dataset: Whether to run the mapping pipeline on the test dataset.
+    :param sample_size: The number of rows to load from the dataset. If None,
+    load the full dataset. Ignored if on_test_dataset is True.
+    """
+    drop_duplicate_licenses = sample_size is not None
+
     if on_test_dataset:
         df = load_dataset(9999, False, cvar.data_dir / "pypi/test/test.csv")
     else:
-        df = load_dataset(sample_size, True)
+        df = load_dataset(sample_size, True, drop_duplicate_licenses=drop_duplicate_licenses)
 
     mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapSubstring(), maps.MapFuzzyMatch()])
     mapped, failed = mp.run(df)

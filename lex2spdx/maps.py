@@ -117,7 +117,7 @@ class MapFuzzyMatch(IMap):
     def __init__(self):
         super().__init__()
         self.fuzzy_match_threshold = 89.5
-        self.scorer = rapidfuzz.fuzz_py.WRatio
+        self.scorer = rapidfuzz.fuzz_py.partial_ratio
 
     def fuzzy_extract_one(self, license_field: str, choices: tuple[str, ...]):
         ret = rapidfuzz.process.extractOne(
@@ -187,7 +187,7 @@ class MapFuzzyMatch(IMap):
 
 
 def _():
-    test_field = "unlicense"
+    test_field = "OSI Approved :: GNU General Public License v3 (GPL"
     test_field = preprocess.normalize_license_field(test_field)
     # MapFuzzyMatch().debug_map(test_field)
     print(MapFuzzyMatch().map(test_field))
