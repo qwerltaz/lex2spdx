@@ -25,6 +25,7 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False,
     :param random_start: If True, start sampling at random position in dataset. Only used if sample_size is not None.
     :parap drop_duplicate_licenses: Whether to drop duplicate licenses and keep only entires with unique licenses (
     arbitrary drop order).
+    : param drop_duplicate_licenses: Whether to drop duplicate licenses and keep only entires with unique licenses.
     :return: The loaded dataset.
     """
     path = path or cvar.pypi_versions_dataset_path
@@ -50,7 +51,7 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False,
     df.drop(["Unnamed: 0"], axis=1, inplace=True)
     df.dropna(subset=["license"], inplace=True)
 
-    df.drop_duplicates(subset=["name"], inplace=True)
+    df.drop_duplicates(subset=["name"], inplace=True)  # <- TODO questionable. Is this fine?
     if drop_duplicate_licenses:
         df.drop_duplicates(subset=["license"], inplace=True)
         _log.warning("Dropping duplicate licenses from dataset.")
@@ -114,12 +115,13 @@ class MapPipeline:
         return mapped_rows_indices, failed_rows_indices
 
 
-def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = None) -> None:
+def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = None, test_mode: bool = True) -> None:
     """
     Run the mapping pipeline on the PyPI dataset and save the mapped results to a CSV file.
 
     :param on_test_dataset: Whether to run the mapping pipeline on the test dataset.
     :param sample_size: The number of rows to load from the dataset. If None,
+    :param test_mode: Enable test mode to run on smaller dataset with unique entries.
     load the full dataset. Ignored if on_test_dataset is True.
     """
     drop_duplicate_licenses = sample_size is not None
@@ -127,7 +129,8 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
     if on_test_dataset:
         df = load_dataset(9999, False, cvar.data_dir / "pypi/test/test.csv")
     else:
-        df = load_dataset(sample_size, True, drop_duplicate_licenses=drop_duplicate_licenses)
+        df_path = cvar.pypi_unique_licenses_dataset_path if test_mode else None
+        df = load_dataset(sample_size, True, df_path, drop_duplicate_licenses)
 
     mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapSubstring(), maps.MapFuzzyMatch()])
     mapped, failed = mp.run(df)
@@ -167,9 +170,14 @@ def main(argv: list[str] | None = None):
         default=500,
         help="Sample size if running on the default dataset.",
     )
+    parser.add_argument(
+        "-r",
+        action="store_true",
+        help="Enable test run for debugging the map pipeline."
+    )
     args = parser.parse_args(argv)
 
-    run_map_pipeline(args.t, args.s)
+    run_map_pipeline(args.t, args.s, args.r)
 
 
 if __name__ == "__main__":
