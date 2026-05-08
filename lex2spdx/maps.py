@@ -1,6 +1,7 @@
 """Individual maps from free-text license fields to SPDX licenses."""
 import json
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Literal
 
 import rapidfuzz
@@ -10,6 +11,36 @@ from . import logger
 from .spdx_license_data import LicenseDataNormalized
 
 _log = logger.get()
+
+
+@dataclass
+class MapResult:
+    """Result of a license mapping operation with one of several possible result types."""
+    identifier: str
+    mapping_type: Literal["spdx_id", "license_family"]
+
+
+LICENSE_FAMILIES = {
+    "BSD": ["0BSD", "BSD-1-Clause", "BSD-2-Clause", "BSD-2-Clause-Darwin", "BSD-2-Clause-FreeBSD",
+            "BSD-2-Clause-NetBSD", "BSD-2-Clause-Patent", "BSD-2-Clause-Views", "BSD-3-Clause",
+            "BSD-3-Clause-Attribution", "BSD-3-Clause-Clear", "BSD-3-Clause-LBNL", "BSD-3-Clause-Modification-Variant",
+            "BSD-3-Clause-No-Nuclear-License", "BSD-3-Clause-No-Nuclear-License-2014",
+            "BSD-3-Clause-No-Nuclear-Warranty",
+            "BSD-Source-Code", "FreeBSD-DOC"],
+    "GPL": ["GPL-1.0-only", "GPL-1.0-or-later", "GPL-2.0-only", "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later"],
+    "LGPL": ["LGPL-2.0-only", "LGPL-2.0-or-later", "LGPL-2.1-only", "LGPL-2.1-or-later", "LGPL-3.0-only",
+             "LGPL-3.0-or-later"],
+    "AGPL": ["AGPL-1.0-only", "AGPL-1.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later"],
+    "Apache": ["Apache-1.0", "Apache-1.1", "Apache-2.0"],
+    "MPL": ["MPL-1.0", "MPL-1.1", "MPL-2.0", "MPL-2.0-no-copyleft-exception"],
+    "ISC": ["ISC"],
+    "Artistic": ["Artistic-1.0", "Artistic-1.0-cl8", "Artistic-1.0-Perl", "Artistic-2.0"],
+}
+
+SPDX_ID_TO_FAMILY = {}
+for family, spdx_ids in LICENSE_FAMILIES.items():
+    for spdx_id in spdx_ids:
+        SPDX_ID_TO_FAMILY[spdx_id] = family
 
 
 def shorten_field(text_field: str | None) -> str | None:
@@ -22,9 +53,9 @@ def shorten_field(text_field: str | None) -> str | None:
 
 class IMap(ABC):
     @abstractmethod
-    def map(self, license_field: str) -> str | None | Literal[""]:
+    def map(self, license_field: str) -> MapResult | None | Literal[""]:
         """
-        Map a free-text license string to an SPDX license identifier.
+        Map a free-text license string to an SPDX license identifier or license family.
 
         Return an empty string if the license is confirmed to be unknown, and
         it cannot be mapped.
@@ -33,7 +64,7 @@ class IMap(ABC):
         but there's a chance it's identifiable in general.
 
         :param license_field: The license string to map.
-        :return: The detected SPDX license ID.
+        :return: MapResult with identifier and mapping_type, empty string, or None.
         """
 
 
@@ -60,7 +91,7 @@ class MapExactID(IMap):
     def map(self, license_field: str):
         for license_spdx in LicenseDataNormalized.licenses:
             if license_field == license_spdx["licenseId"]:
-                return license_spdx["licenseId"]
+                return MapResult(license_spdx["licenseId"], "spdx_id")
 
         return None
 
@@ -80,7 +111,7 @@ class MapExactMatch(IMap):
 
             for candidate in candidates:
                 if candidate and license_field == candidate:
-                    return license_spdx["licenseId"]
+                    return MapResult(license_spdx["licenseId"], "spdx_id")
 
         return None
 
@@ -99,7 +130,25 @@ class MapSubstring(IMap):
             candidates = [text, name]
             for candidate in candidates:
                 if candidate and candidate in license_field:
-                    return license_spdx["licenseId"]
+                    return MapResult(license_spdx["licenseId"], "spdx_id")
+
+        return None
+
+
+class MapLicenseFamily(IMap):
+    """
+    Map to a license family (e.g., 'BSD', 'GPL', 'Apache') based on exact match
+    of the normalized license field to common family identifiers.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.family_names_normalized = {preprocess.normalize_license_field(family): family
+                                        for family in LICENSE_FAMILIES.keys()}
+
+    def map(self, license_field: str):
+        if license_field in self.family_names_normalized:
+            return MapResult(self.family_names_normalized[license_field], "license_family")
 
         return None
 
@@ -153,7 +202,7 @@ class MapFuzzyMatch(IMap):
                 shorten_field(license_field),
                 priority_scores,
             )
-            return best_priority_spdx_id
+            return MapResult(best_priority_spdx_id, "spdx_id")
 
         score_text = self.fuzzy_extract_one(license_field, LicenseDataNormalized.license_texts)
         score_title_text = self.fuzzy_extract_one(license_field, LicenseDataNormalized.license_title_texts)
@@ -172,7 +221,9 @@ class MapFuzzyMatch(IMap):
             best_text_score,
         )
 
-        return best_text_spdx_id if best_text_score > self.fuzzy_match_threshold else None
+        if best_text_score > self.fuzzy_match_threshold:
+            return MapResult(best_text_spdx_id, "spdx_id")
+        return None
 
     def debug_map(self, license_field: str):
         for inputs in (LicenseDataNormalized.license_ids, LicenseDataNormalized.license_names,

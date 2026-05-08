@@ -2,7 +2,7 @@ from _pytest.monkeypatch import MonkeyPatch
 
 import lex2spdx.maps
 from lex2spdx import preprocess
-from lex2spdx.maps import MapFuzzyMatch
+from lex2spdx.maps import MapFuzzyMatch, MapResult
 from lex2spdx.spdx_license_data import LicenseDataNormalized
 from lex2spdx.preprocess import normalize_license_field
 
@@ -27,7 +27,8 @@ def test_map_na():
 def test_map_exact_id():
     map_exact_id = lex2spdx.maps.MapExactID()
 
-    assert map_exact_id.map("mit") == "mit"
+    result = map_exact_id.map("mit")
+    assert result == MapResult("mit", "spdx_id")
     assert map_exact_id.map("mit license") is None
     assert map_exact_id.map("") is None
     assert map_exact_id.map("gnu library general public license version 2 june 1991") is None
@@ -41,24 +42,40 @@ def test_map_exact_match():
     assert map_exact_match.map("mit licence") is None
     assert map_exact_match.map("mit licensee") is None
     # Text
-    assert map_exact_match.map(normalize_license_field(
+    result = map_exact_match.map(normalize_license_field(
         "copyright c 1992 1991 1990 mips computer systems inc mips computer systems inc grants "
-        "reproduction and use rights to all parties provided that this comment is maintained in the copy")) == "mips"
+        "reproduction and use rights to all parties provided that this comment is maintained in the copy"))
+    assert result == MapResult("mips", "spdx_id")
 
 
 def test_map_substring():
     map_substring = lex2spdx.maps.MapSubstring()
 
     # Name
-    assert map_substring.map("the unlicense") == "unlicense"
+    result = map_substring.map("the unlicense")
+    assert result == MapResult("unlicense", "spdx_id")
     # Text
-    assert map_substring.map(
+    result = map_substring.map(
         "copyright c 1992 1991 1990 mips computer systems inc mips computer systems inc grants "
-        "reproduction and use rights to all parties provided that this comment is maintained in the copy") == "mips"
-    assert (map_substring.map(
+        "reproduction and use rights to all parties provided that this comment is maintained in the copy")
+    assert result == MapResult("mips", "spdx_id")
+    result = map_substring.map(
         "lipsum copyright c 1992 1991 1990 mips computer systems inc mips computer systems inc grants "
         "reproduction and use rights to all parties provided that this comment is maintained in the copy lipsum")
-            == "mips")
+    assert result == MapResult("mips", "spdx_id")
+
+
+def test_map_license_family():
+    map_family = lex2spdx.maps.MapLicenseFamily()
+
+    result = map_family.map("bsd")
+    assert result == MapResult("BSD", "license_family")
+
+    result = map_family.map("gpl")
+    assert result == MapResult("GPL", "license_family")
+
+    assert map_family.map("mit") is None
+    assert map_family.map("unknown") is None
 
 
 def create_and_patch_fuzzy_map(monkeypatch: MonkeyPatch) -> MapFuzzyMatch:
@@ -82,7 +99,8 @@ def test_map_fuzzy_match_prioritizes_id_name_title_over_full_text(monkeypatch: M
 
     monkeypatch.setattr(lex2spdx.maps.rapidfuzz.process, "extractOne", fake_extract_one)
 
-    assert map_fuzzy_match.map("sample") == "spdx 0"
+    result = map_fuzzy_match.map("sample")
+    assert result == MapResult("spdx 0", "spdx_id")
 
 
 def test_map_fuzzy_match_uses_text_fallback_only_when_priority_below_threshold(monkeypatch: MonkeyPatch):
@@ -97,4 +115,5 @@ def test_map_fuzzy_match_uses_text_fallback_only_when_priority_below_threshold(m
 
     monkeypatch.setattr(lex2spdx.maps.rapidfuzz.process, "extractOne", fake_extract_one)
 
-    assert map_fuzzy_match.map("sample") == "spdx 1"
+    result = map_fuzzy_match.map("sample")
+    assert result == MapResult("spdx 1", "spdx_id")

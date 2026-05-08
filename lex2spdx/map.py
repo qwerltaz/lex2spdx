@@ -59,11 +59,11 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False,
 
 class MapPipeline:
 
-    def __init__(self, maps: list[maps.IMap]):
-        self.maps = maps
-        self.last_mapped_by_map: dict[str, list[tuple[int, str, str]]] = {}
+    def __init__(self, maps_list: list[maps.IMap]):
+        self.maps = maps_list
+        self.last_mapped_by_map: dict[str, list[tuple[int, str, str, str]]] = {}  # (idx, original_license, identifier, mapping_type)
         self.last_unresolved_by_map: dict[str, list[tuple[int, str]]] = {}
-        self.mapped_idx_to_spdx_id: dict[int, str] = {}
+        self.mapped_idx_to_result: dict[int, tuple[str, str]] = {}  # idx -> (identifier, mapping_type)
 
     def run(self, df: pd.DataFrame) -> tuple[set, set]:
         mapped_rows_indices = set()
@@ -71,7 +71,7 @@ class MapPipeline:
 
         self.last_mapped_by_map = {}
         self.last_unresolved_by_map = {}
-        self.mapped_idx_to_spdx_id = {}
+        self.mapped_idx_to_result = {}
 
         rows_by_idx = df.set_index("idx")
 
@@ -96,13 +96,21 @@ class MapPipeline:
                     unresolved_by_this_map.append((idx, row_license))
                     _log.info("❌Map %s did not map input '%s' (%s)",
                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license))
+                elif result == "":
+                    mapped_rows_indices.add(idx)
+                    mapped_by_this_map.append((idx, row_license, "", "unknown"))
+                    self.mapped_idx_to_result[idx] = ("", "unknown")
+                    _log.info("✅Map %s confirmed input '%s' (%s) as unknown",
+                              map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license))
                 else:
                     mapped_rows_indices.add(idx)
-                    mapped_by_this_map.append((idx, row_license, result))
-                    self.mapped_idx_to_spdx_id[idx] = result
-                    _log.info("✅Map %s mapped input '%s' (%s) to SPDX ID '%s'",
+                    identifier = result.identifier
+                    mapping_type = result.mapping_type
+                    mapped_by_this_map.append((idx, row_license, identifier, mapping_type))
+                    self.mapped_idx_to_result[idx] = (identifier, mapping_type)
+                    _log.info("✅Map %s mapped input '%s' (%s) to %s '%s'",
                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license),
-                              result)
+                              mapping_type, identifier)
 
             self.last_mapped_by_map[map_name] = mapped_by_this_map
             self.last_unresolved_by_map[map_name] = unresolved_by_this_map
@@ -130,7 +138,13 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
         df_path = cvar.pypi_unique_licenses_dataset_path if test_mode else None
         df = load_dataset(sample_size, True, df_path, drop_duplicate_licenses)
 
-    mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapFuzzyMatch()])
+    mp = MapPipeline([
+        maps.MapNA(),
+        maps.MapExactID(),
+        maps.MapExactMatch(),
+        maps.MapLicenseFamily(),
+        maps.MapFuzzyMatch()
+    ])
     mapped, failed = mp.run(df)
 
     failed_df = df[[x in failed for x in df["idx"]]]
@@ -139,10 +153,11 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
     _log.info("failed to map: %s", failed_set)
 
     mapped_results = []
-    for i, (idx, spdx_id) in enumerate(sorted(mp.mapped_idx_to_spdx_id.items())):
+    for i, (idx, (identifier, mapping_type)) in enumerate(sorted(mp.mapped_idx_to_result.items())):
         mapped_results.append({
             "dataset_index": idx,
-            "spdx_id": spdx_id,
+            "identifier": identifier,
+            "mapping_type": mapping_type,
         })
 
     mapped_results_df = pd.DataFrame(mapped_results)
