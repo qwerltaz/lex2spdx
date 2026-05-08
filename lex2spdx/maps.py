@@ -176,21 +176,21 @@ class MapFuzzyMatch(IMap):
 
     def debug_map(self, license_field: str):
         for inputs in (LicenseDataNormalized.license_ids, LicenseDataNormalized.license_names,
-                       LicenseDataNormalized.license_title_texts):
+                       LicenseDataNormalized.license_title_texts, LicenseDataNormalized.license_texts):
             scores = self.fuzzy_extract(license_field, inputs)
             _log.debug(
                 "Fuzzy match scores for input '%s'\nagainst %s:\n%r",
                 shorten_field(license_field),
-                inputs,
-                scores,
+                list(map(shorten_field, inputs)),
+                list(map(lambda x: (shorten_field(x[0]), x[1], x[2]), scores)),
             )
 
 
 def _():
-    test_field = "OSI Approved :: GNU General Public License v3 (GPL"
+    test_field = "gnu lgpl"
     test_field = preprocess.normalize_license_field(test_field)
-    # MapFuzzyMatch().debug_map(test_field)
-    print(MapFuzzyMatch().map(test_field))
+    MapFuzzyMatch().debug_map(test_field)
+    # print(MapFuzzyMatch().map(test_field))
 
 
 if __name__ == '__main__':

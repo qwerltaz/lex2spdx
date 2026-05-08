@@ -23,16 +23,14 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False,
     :param path: The path to the dataset CSV file.
     :param sample_size: The number of rows to load instead of full dataset. If None, load the full dataset.
     :param random_start: If True, start sampling at random position in dataset. Only used if sample_size is not None.
-    :parap drop_duplicate_licenses: Whether to drop duplicate licenses and keep only entires with unique licenses (
+    :param drop_duplicate_licenses: Whether to drop duplicate licenses and keep only entires with unique licenses (
     arbitrary drop order).
-    : param drop_duplicate_licenses: Whether to drop duplicate licenses and keep only entires with unique licenses.
-    :return: The loaded dataset.
     """
     path = path or cvar.pypi_versions_dataset_path
 
     if sample_size is not None and random_start:
         # About 10% of the true dataset size, for faster random sampling.
-        alleged_dataset_size = 200000
+        alleged_dataset_size = 15000
 
         if sample_size > alleged_dataset_size:
             sample_size = alleged_dataset_size
@@ -132,7 +130,7 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
         df_path = cvar.pypi_unique_licenses_dataset_path if test_mode else None
         df = load_dataset(sample_size, True, df_path, drop_duplicate_licenses)
 
-    mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapSubstring(), maps.MapFuzzyMatch()])
+    mp = MapPipeline([maps.MapNA(), maps.MapExactID(), maps.MapExactMatch(), maps.MapFuzzyMatch()])
     mapped, failed = mp.run(df)
 
     failed_df = df[[x in failed for x in df["idx"]]]
@@ -167,7 +165,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument(
         "-s",
         type=int,
-        default=500,
+        default=100,
         help="Sample size if running on the default dataset.",
     )
     parser.add_argument(

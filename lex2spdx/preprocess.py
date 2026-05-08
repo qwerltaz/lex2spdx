@@ -34,7 +34,9 @@ def normalize_license_field(text: str | None, remove_stop_words: bool = True, tr
         return ""
 
     if text.lower().startswith("license ::") or text.lower().startswith("osi approved ::"):
-        text = text.split("::")[-1].strip()
+        text = text.split("::")[-1]
+
+    text = text.strip()
 
     if truncate_long_texts and len(text) > truncate_max_length:
         text = text[:truncate_max_length]
@@ -44,7 +46,7 @@ def normalize_license_field(text: str | None, remove_stop_words: bool = True, tr
     # v1.0 -> ␣1.0. (This is how SPDX specifies license versions)
     text_normalized = re.sub(r"v(\d)", r" \1", text_normalized)
 
-    text_normalized = re.sub(r"\s+", " ", text_normalized.strip())
+    text_normalized = re.sub(r"\s+", " ", text_normalized)
 
     # gpl3 -> gpl 3 0.
     text_normalized = re.sub(r"gpl(\d)", r"gpl \1", text_normalized)
