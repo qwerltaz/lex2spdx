@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 
 from lex2spdx import cvar
@@ -14,6 +16,7 @@ def main():
     print(f"Original dataset size: {len(df)}")  # 7693395
     print(f"Dataset size after removing duplicates: {len(df_no_duplicates)}")  # 17689
 
+    os.makedirs(cvar.pypi_unique_licenses_dataset_dir, exist_ok=True)
     df_no_duplicates.to_csv(cvar.pypi_unique_licenses_dataset_path, index=False)
 
 
