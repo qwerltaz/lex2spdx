@@ -136,4 +136,3 @@ def test_map_fuzzy_match_does_not_match_short_spdx_id_as_substring(monkeypatch: 
     )
 
     assert map_fuzzy_match.map(license_field) == MapResult("mit", "spdx_id")
-

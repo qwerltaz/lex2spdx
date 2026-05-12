@@ -26,6 +26,19 @@ def _extract_text(element: ElementTree.Element | None) -> str:
     return " ".join("".join(element.itertext()).split())
 
 
+def _extract_title_text(element: ElementTree.Element | None) -> str:
+    """Extract XML titleText element, ensuring it is not just a generic title."""
+    if element is None:
+        return ""
+
+    title_text = " ".join("".join(element.itertext()).split())
+
+    if preprocess.normalize_license_field(title_text).lower() == "license":
+        return ""
+
+    return title_text
+
+
 def get_licenses(normalize: bool = False) -> list[License]:
     """Parse SPDX license XML files and return a list of License dictionaries with their information."""
     license_list = []
@@ -54,7 +67,7 @@ def get_licenses(normalize: bool = False) -> list[License]:
             deprecatedVersion=license_element.get("deprecatedVersion"),
             crossRefs=cross_refs,
             text=_extract_text(text_element),
-            titleText=_extract_text(title_element),
+            titleText=_extract_title_text(title_element),
             copyrightText=_extract_text(copyright_element),
         )
 

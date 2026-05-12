@@ -61,7 +61,8 @@ class MapPipeline:
 
     def __init__(self, maps_list: list[maps.IMap]):
         self.maps = maps_list
-        self.last_mapped_by_map: dict[str, list[tuple[int, str, str, str]]] = {}  # (idx, original_license, identifier, mapping_type)
+        self.last_mapped_by_map: dict[
+            str, list[tuple[int, str, str, str]]] = {}  # (idx, original_license, identifier, mapping_type)
         self.last_unresolved_by_map: dict[str, list[tuple[int, str]]] = {}
         self.mapped_idx_to_result: dict[int, tuple[str, str]] = {}  # idx -> (identifier, mapping_type)
 
