@@ -165,30 +165,44 @@ class MapFuzzyMatch(IMap):
 
     def __init__(self):
         super().__init__()
-        self.fuzzy_match_threshold = 89.5
-        self.scorer = rapidfuzz.fuzz_py.partial_ratio
+        self.fuzzy_match_threshold = 85
+        # Partial_ratio is very permissive for short strings.
+        # Example: "doc" will score 100 against any long text containing
+        # "documentation" and can cause false positives.
+        #
+        # For SPDX ids/names we prefer token-based similarity to require whole-token matches.
+        # This still matches, e.g., "mit license ..." -> "mit", but avoids "doc" -> "documentation".
+        self.scorer_id_name = rapidfuzz.fuzz.token_set_ratio
+        # For full texts/title texts, token-based similarity is also safer than substring matching.
+        self.scorer_text = rapidfuzz.fuzz.token_set_ratio
 
-    def fuzzy_extract_one(self, license_field: str, choices: tuple[str, ...]):
+    @staticmethod
+    def fuzzy_extract_one(license_field: str, choices: tuple[str, ...], *, scorer):
         ret = rapidfuzz.process.extractOne(
             license_field,
             choices,
-            scorer=self.scorer,
+            scorer=scorer,
         )
 
         return ret
 
-    def fuzzy_extract(self, license_field: str, choices: tuple[str, ...]):
+    @staticmethod
+    def fuzzy_extract(license_field: str, choices: tuple[str, ...], *, scorer):
         ret = rapidfuzz.process.extract(
             license_field,
             choices,
-            scorer=self.scorer,
+            scorer=scorer,
         )
 
         return ret
 
     def map(self, license_field: str):
-        score_id = self.fuzzy_extract_one(license_field, LicenseDataNormalized.license_ids)
-        score_name = self.fuzzy_extract_one(license_field, LicenseDataNormalized.license_names)
+        score_id = self.fuzzy_extract_one(
+            license_field, LicenseDataNormalized.license_ids, scorer=self.scorer_id_name
+        )
+        score_name = self.fuzzy_extract_one(
+            license_field, LicenseDataNormalized.license_names, scorer=self.scorer_id_name
+        )
 
         priority_scores = sorted([score_id, score_name], key=lambda x: x[1], reverse=True)
         best_priority_text, best_priority_score, best_priority_index = priority_scores[0]
@@ -204,8 +218,12 @@ class MapFuzzyMatch(IMap):
             )
             return MapResult(best_priority_spdx_id, "spdx_id")
 
-        score_text = self.fuzzy_extract_one(license_field, LicenseDataNormalized.license_texts)
-        score_title_text = self.fuzzy_extract_one(license_field, LicenseDataNormalized.license_title_texts)
+        score_text = self.fuzzy_extract_one(
+            license_field, LicenseDataNormalized.license_texts, scorer=self.scorer_text
+        )
+        score_title_text = self.fuzzy_extract_one(
+            license_field, LicenseDataNormalized.license_title_texts, scorer=self.scorer_text
+        )
 
         priority_scores2 = sorted([score_text, score_title_text], key=lambda x: x[1], reverse=True)
         best_text_match, best_text_score, best_text_index = priority_scores2[0]
@@ -228,7 +246,11 @@ class MapFuzzyMatch(IMap):
     def debug_map(self, license_field: str):
         for inputs in (LicenseDataNormalized.license_ids, LicenseDataNormalized.license_names,
                        LicenseDataNormalized.license_title_texts, LicenseDataNormalized.license_texts):
-            scores = self.fuzzy_extract(license_field, inputs)
+            scorer = self.scorer_text
+            if inputs in (LicenseDataNormalized.license_ids, LicenseDataNormalized.license_names):
+                scorer = self.scorer_id_name
+
+            scores = self.fuzzy_extract(license_field, inputs, scorer=scorer)
             _log.debug(
                 "Fuzzy match scores for input '%s'\nagainst %s:\n%r",
                 shorten_field(license_field),
@@ -238,7 +260,7 @@ class MapFuzzyMatch(IMap):
 
 
 def _():
-    test_field = "gnu lgpl"
+    test_field = "gnu general public 3 gpl 3"
     test_field = preprocess.normalize_license_field(test_field)
     MapFuzzyMatch().debug_map(test_field)
     # print(MapFuzzyMatch().map(test_field))

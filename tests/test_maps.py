@@ -1,7 +1,6 @@
 from _pytest.monkeypatch import MonkeyPatch
 
 import lex2spdx.maps
-from lex2spdx import preprocess
 from lex2spdx.maps import MapFuzzyMatch, MapResult
 from lex2spdx.spdx_license_data import LicenseDataNormalized
 from lex2spdx.preprocess import normalize_license_field
@@ -18,10 +17,12 @@ def test_map_na():
         "free for non commercial use",
         "inline license",
     ]
-    unmappable_values = map(normalize_license_field, unmappable_values)
+    unmappable_values = [normalize_license_field(x) for x in unmappable_values]
 
     for value in unmappable_values:
-        assert map_na.map(value) == "", f"Value '{value}' should be mapped to empty string."
+        assert value is not None
+        value_str: str = value
+        assert map_na.map(value_str) == "", f"Value '{value_str}' should be mapped to empty string."
 
 
 def test_map_exact_id():
@@ -117,3 +118,22 @@ def test_map_fuzzy_match_uses_text_fallback_only_when_priority_below_threshold(m
 
     result = map_fuzzy_match.map("sample")
     assert result == MapResult("spdx 1", "spdx_id")
+
+
+def test_map_fuzzy_match_does_not_match_short_spdx_id_as_substring(monkeypatch: MonkeyPatch):
+    """Regression: avoid mapping to SPDX id 'doc' just because input contains 'documentation'."""
+    map_fuzzy_match = lex2spdx.maps.MapFuzzyMatch()
+
+    # Minimal synthetic SPDX data: make sure we have a short id ('doc')
+    # and the correct one ('mit'). Token-based scoring should pick MIT.
+    monkeypatch.setattr(LicenseDataNormalized, "license_ids", ["doc", "mit"])
+    monkeypatch.setattr(LicenseDataNormalized, "license_names", ["doc", "mit"])
+    monkeypatch.setattr(LicenseDataNormalized, "license_texts", ["doc license text", "mit license text"])
+    monkeypatch.setattr(LicenseDataNormalized, "license_title_texts", ["doc title", "mit title"])
+
+    license_field = normalize_license_field(
+        "MIT License Copyright (c) 2023 ... associated documentation files"
+    )
+
+    assert map_fuzzy_match.map(license_field) == MapResult("mit", "spdx_id")
+

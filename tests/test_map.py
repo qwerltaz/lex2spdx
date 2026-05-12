@@ -24,7 +24,7 @@ class FirstPassMap(IMap):
 
 class SecondPassMap(IMap):
     def map(self, license_field: str):
-        if license_field == "mit":
+        if license_field == "mit license":
             return MapResult("mit", "spdx_id")
         if license_field == "unknown":
             return ""

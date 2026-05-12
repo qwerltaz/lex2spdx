@@ -49,7 +49,7 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False,
     df.drop(["Unnamed: 0"], axis=1, inplace=True)
     df.dropna(subset=["license"], inplace=True)
 
-    df.drop_duplicates(subset=["name"], inplace=True)  # <- TODO questionable. Is this fine?
+    # df.drop_duplicates(subset=["name"], inplace=True)  # <- TODO questionable. Is this fine?
     if drop_duplicate_licenses:
         df.drop_duplicates(subset=["license"], inplace=True)
         _log.warning("Dropping duplicate licenses from dataset.")
