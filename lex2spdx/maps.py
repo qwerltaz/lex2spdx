@@ -197,16 +197,20 @@ class MapFuzzyMatch(IMap):
         return ret
 
     def map(self, license_field: str):
+        licenses = LicenseDataNormalized.licenses
+        license_ids = tuple(license_info["licenseId"] for license_info in licenses)
+        license_names = tuple(license_info["name"] for license_info in licenses)
+
         score_id = self.fuzzy_extract_one(
-            license_field, LicenseDataNormalized.license_ids, scorer=self.scorer_id_name
+            license_field, license_ids, scorer=self.scorer_id_name
         )
         score_name = self.fuzzy_extract_one(
-            license_field, LicenseDataNormalized.license_names, scorer=self.scorer_id_name
+            license_field, license_names, scorer=self.scorer_id_name
         )
 
         priority_scores = sorted([score_id, score_name], key=lambda x: x[1], reverse=True)
         best_priority_text, best_priority_score, best_priority_index = priority_scores[0]
-        best_priority_spdx_id = LicenseDataNormalized.license_ids[best_priority_index]
+        best_priority_spdx_id = licenses[best_priority_index]["licenseId"]
 
         if best_priority_score >= self.fuzzy_match_threshold:
             _log.debug(
@@ -218,16 +222,18 @@ class MapFuzzyMatch(IMap):
             )
             return MapResult(best_priority_spdx_id, "spdx_id")
 
+        license_texts = tuple(license_info["text"] for license_info in licenses)
+        license_title_texts = tuple(license_info["titleText"] for license_info in licenses)
         score_text = self.fuzzy_extract_one(
-            license_field, LicenseDataNormalized.license_texts, scorer=self.scorer_text
+            license_field, license_texts, scorer=self.scorer_text
         )
         score_title_text = self.fuzzy_extract_one(
-            license_field, LicenseDataNormalized.license_title_texts, scorer=self.scorer_text
+            license_field, license_title_texts, scorer=self.scorer_text
         )
 
         priority_scores2 = sorted([score_text, score_title_text], key=lambda x: x[1], reverse=True)
         best_text_match, best_text_score, best_text_index = priority_scores2[0]
-        best_text_spdx_id = LicenseDataNormalized.license_ids[best_text_index]
+        best_text_spdx_id = licenses[best_text_index]["licenseId"]
 
         _log.debug(
             "Priority fuzzy below threshold for input %s\npriority scores: %r\n"
@@ -244,10 +250,14 @@ class MapFuzzyMatch(IMap):
         return None
 
     def debug_map(self, license_field: str):
-        for inputs in (LicenseDataNormalized.license_ids, LicenseDataNormalized.license_names,
-                       LicenseDataNormalized.license_title_texts, LicenseDataNormalized.license_texts):
+        licenses = LicenseDataNormalized.licenses
+        license_ids = tuple(license_info["licenseId"] for license_info in licenses)
+        license_names = tuple(license_info["name"] for license_info in licenses)
+        license_title_texts = tuple(license_info["titleText"] for license_info in licenses)
+        license_texts = tuple(license_info["text"] for license_info in licenses)
+        for inputs in (license_ids, license_names, license_title_texts, license_texts):
             scorer = self.scorer_text
-            if inputs in (LicenseDataNormalized.license_ids, LicenseDataNormalized.license_names):
+            if inputs in (license_ids, license_names):
                 scorer = self.scorer_id_name
 
             scores = self.fuzzy_extract(license_field, inputs, scorer=scorer)

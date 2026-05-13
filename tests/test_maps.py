@@ -82,9 +82,10 @@ def test_map_license_family():
 def create_and_patch_fuzzy_map(monkeypatch: MonkeyPatch) -> MapFuzzyMatch:
     map_fuzzy_match = lex2spdx.maps.MapFuzzyMatch()
 
-    monkeypatch.setattr(LicenseDataNormalized, "license_ids", ["spdx 0", "spdx 1"])
-    monkeypatch.setattr(LicenseDataNormalized, "license_names", ["name 0", "name 1"])
-    monkeypatch.setattr(LicenseDataNormalized, "license_texts", ["text 0", "text 1"])
+    monkeypatch.setattr(LicenseDataNormalized, "licenses", [
+        {"licenseId": "spdx 0", "name": "name 0", "text": "text 0", "titleText": "title 0"},
+        {"licenseId": "spdx 1", "name": "name 1", "text": "text 1", "titleText": "title 1"},
+    ])
     return map_fuzzy_match
 
 
@@ -92,9 +93,9 @@ def test_map_fuzzy_match_prioritizes_id_name_title_over_full_text(monkeypatch: M
     map_fuzzy_match = create_and_patch_fuzzy_map(monkeypatch)
 
     def fake_extract_one(query, choices, processor=None, scorer=None):
-        if choices is LicenseDataNormalized.license_ids:
+        if choices == ("spdx 0", "spdx 1"):
             return "spdx 0", 91.0, 0
-        if choices is LicenseDataNormalized.license_names:
+        if choices == ("name 0", "name 1"):
             return "name 0", 92.0, 0
         return "text 1", 99.0, 1
 
@@ -108,9 +109,9 @@ def test_map_fuzzy_match_uses_text_fallback_only_when_priority_below_threshold(m
     map_fuzzy_match = create_and_patch_fuzzy_map(monkeypatch)
 
     def fake_extract_one(query, choices, processor=None, scorer=None):
-        if choices is LicenseDataNormalized.license_ids:
+        if choices == ("spdx 0", "spdx 1"):
             return "spdx 0", 70.0, 0
-        if choices is LicenseDataNormalized.license_names:
+        if choices == ("name 0", "name 1"):
             return "name 0", 80.0, 0
         return "text 1", 95.0, 1
 
@@ -120,16 +121,37 @@ def test_map_fuzzy_match_uses_text_fallback_only_when_priority_below_threshold(m
     assert result == MapResult("spdx 1", "spdx_id")
 
 
+def test_map_fuzzy_match_maps_name_to_matching_license_id(monkeypatch: MonkeyPatch):
+    map_fuzzy_match = lex2spdx.maps.MapFuzzyMatch()
+
+    monkeypatch.setattr(LicenseDataNormalized, "licenses", [
+        {"licenseId": "spdx 0", "name": "alpha", "text": "text 0", "titleText": "title 0"},
+        {"licenseId": "spdx 1", "name": "beta", "text": "text 1", "titleText": "title 1"},
+    ])
+
+    def fake_extract_one(query, choices, processor=None, scorer=None):
+        if choices == ("spdx 0", "spdx 1"):
+            return "spdx 0", 70.0, 0
+        if choices == ("alpha", "beta"):
+            return "beta", 95.0, 1
+        return "text 0", 10.0, 0
+
+    monkeypatch.setattr(lex2spdx.maps.rapidfuzz.process, "extractOne", fake_extract_one)
+
+    result = map_fuzzy_match.map("beta")
+    assert result == MapResult("spdx 1", "spdx_id")
+
+
 def test_map_fuzzy_match_does_not_match_short_spdx_id_as_substring(monkeypatch: MonkeyPatch):
     """Regression: avoid mapping to SPDX id 'doc' just because input contains 'documentation'."""
     map_fuzzy_match = lex2spdx.maps.MapFuzzyMatch()
 
     # Minimal synthetic SPDX data: make sure we have a short id ('doc')
     # and the correct one ('mit'). Token-based scoring should pick MIT.
-    monkeypatch.setattr(LicenseDataNormalized, "license_ids", ["doc", "mit"])
-    monkeypatch.setattr(LicenseDataNormalized, "license_names", ["doc", "mit"])
-    monkeypatch.setattr(LicenseDataNormalized, "license_texts", ["doc license text", "mit license text"])
-    monkeypatch.setattr(LicenseDataNormalized, "license_title_texts", ["doc title", "mit title"])
+    monkeypatch.setattr(LicenseDataNormalized, "licenses", [
+        {"licenseId": "doc", "name": "doc", "text": "doc license text", "titleText": "doc title"},
+        {"licenseId": "mit", "name": "mit", "text": "mit license text", "titleText": "mit title"},
+    ])
 
     license_field = normalize_license_field(
         "MIT License Copyright (c) 2023 ... associated documentation files"
