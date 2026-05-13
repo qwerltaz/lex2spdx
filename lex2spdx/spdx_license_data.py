@@ -13,7 +13,7 @@ class License(TypedDict):
     name: str
     listVersionAdded: str | None
     deprecatedVersion: str | None
-    crossRefs: list[str]
+    crossRefs: list[str | None]
     text: str
     titleText: str
     copyrightText: str
@@ -72,9 +72,17 @@ def get_licenses(normalize: bool = False) -> list[License]:
         )
 
         if normalize:
-            for key, value in current_license.items():
-                if isinstance(value, str):
-                    current_license[key] = preprocess.normalize_license_field(value)
+            current_license = License(
+                isOsiApproved=current_license["isOsiApproved"],
+                licenseId=preprocess.normalize_license_field(current_license["licenseId"]),
+                name=preprocess.normalize_license_field(current_license["name"]),
+                listVersionAdded=current_license["listVersionAdded"],
+                deprecatedVersion=current_license["deprecatedVersion"],
+                crossRefs=current_license["crossRefs"],
+                text=preprocess.normalize_license_field(current_license["text"]),
+                titleText=preprocess.normalize_license_field(current_license["titleText"]),
+                copyrightText=preprocess.normalize_license_field(current_license["copyrightText"]),
+            )
         license_list.append(current_license)
 
     return license_list

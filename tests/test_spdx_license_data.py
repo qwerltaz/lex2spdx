@@ -115,7 +115,7 @@ def test_get_licenses_normalize_normalizes_string_fields(tmp_path: Path, monkeyp
     lic = licenses[0]
     assert lic["licenseId"] == "mit"
     assert lic["name"] == "mit license"
-    assert lic["listVersionAdded"] == " 1 0"
+    assert lic["listVersionAdded"] == "v1.0"
 
     # Lists are not normalized by get_licenses(normalize=True)
     assert lic["crossRefs"] == ["https://opensource.org/licenses/MIT"]
