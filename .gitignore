@@ -208,3 +208,4 @@ __marimo__/
 
 data/pypi/raw
 data/raw/pypi
+/data/output/dataset_row_counts.json

@@ -5,6 +5,7 @@ import os
 import random
 from datetime import datetime
 from typing import TypedDict, Literal
+import json
 
 import pandas as pd
 
@@ -16,13 +17,46 @@ from . import preprocess
 _log = logger.get()
 
 
+def _load_row_count_cache(cache_path: os.PathLike | str) -> dict[str, dict[str, int]]:
+    if not os.path.exists(cache_path):
+        return {}
+    with open(cache_path, "r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _save_row_count_cache(cache_path: os.PathLike | str, cache: dict[str, dict[str, int]]) -> None:
+    os.makedirs(os.path.dirname(os.fspath(cache_path)), exist_ok=True)
+    with open(cache_path, "w", encoding="utf-8") as handle:
+        json.dump(cache, handle, indent=2, sort_keys=True)
+
+
+def _get_dataset_row_count(path: str | os.PathLike) -> int:
+    """Return the number of data rows (excluding header) in a CSV file."""
+    cache_path = cvar.data_dir / "output" / "dataset_row_counts.json"
+    path_str = os.fspath(path)
+    stat = os.stat(path_str)
+
+    cache = _load_row_count_cache(cache_path)
+    cached = cache.get(path_str)
+    if cached and cached.get("mtime") == int(stat.st_mtime) and cached.get("size") == stat.st_size:
+        return cached.get("rows", 0)
+
+    df = pd.read_csv(path_str)
+    row_count = max(0, len(df) - 1)
+
+    cache[path_str] = {"mtime": int(stat.st_mtime), "size": stat.st_size, "rows": row_count}
+    _save_row_count_cache(cache_path, cache)
+
+    return row_count
+
+
 def load_already_mapped_indices() -> set[int]:
     """Load previously mapped row indices from CSVs in the output/mapped directory."""
     mapped_dir = cvar.data_dir / "output" / "mapped"
     if not mapped_dir.exists():
         return set()
 
-    mapped_files = sorted(mapped_dir.glob("*.csv"))
+    mapped_files = mapped_dir.glob("*.csv")
     if not mapped_files:
         return set()
 
@@ -31,7 +65,7 @@ def load_already_mapped_indices() -> set[int]:
         # No try-except. Let it fail on unexpected columns or other error.
         df = pd.read_csv(mapped_file, usecols=["idx"])
 
-        idx_values = pd.to_numeric(df["idx"], errors="coerce").dropna().astype(int)
+        idx_values = pd.to_numeric(df["idx"]).dropna().astype(int)
         mapped_indices.update(idx_values.tolist())
 
     return mapped_indices
@@ -51,18 +85,20 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False,
     path = path or cvar.pypi_versions_dataset_path
 
     if sample_size is not None and random_start:
-        # About 10% of the true dataset size, for faster random sampling.
-        alleged_dataset_size = 15000
+        total_rows = _get_dataset_row_count(path)
+        if total_rows == 0 or sample_size == 0:
+            return pd.read_csv(path, low_memory=False, nrows=0)
 
-        if sample_size > alleged_dataset_size:
-            sample_size = alleged_dataset_size
+        if sample_size > total_rows:
+            sample_size = total_rows
 
-        start_row = random.randint(0, alleged_dataset_size)
+        max_start = max(0, total_rows - sample_size)
+        start_row = random.randint(0, max_start)
 
         df = pd.read_csv(
             path,
             low_memory=False,
-            skiprows=range(1, start_row),
+            skiprows=range(1, start_row + 1),
             nrows=sample_size,
         )
     else:
@@ -177,13 +213,17 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
     :param test_mode: Enable test mode to run on smaller dataset with unique entries.
     load the full dataset. Ignored if on_test_dataset is True.
     """
+    if sample_size == -1:
+        sample_size = None
+
     drop_duplicate_licenses = sample_size is not None
 
     if on_test_dataset:
         df = load_dataset(9999, False, cvar.data_dir / "pypi/test/test.csv")
     else:
+        random_start = isinstance(sample_size, int) and sample_size >= 0
         df_path = cvar.pypi_unique_licenses_dataset_path if test_mode else None
-        df = load_dataset(sample_size, True, df_path, drop_duplicate_licenses)
+        df = load_dataset(sample_size, random_start, df_path, drop_duplicate_licenses)
 
     mp = MapPipeline([
         maps.MapNA(),
@@ -225,7 +265,7 @@ def main(argv: list[str] | None = None):
         "-s",
         type=int,
         default=100,
-        help="Sample size if running on the default dataset.",
+        help="Sample size if running on the default dataset. -1 to run on the full dataset."
     )
     parser.add_argument(
         "-r",
