@@ -4,6 +4,7 @@ import argparse
 import os
 import random
 from datetime import datetime
+from typing import TypedDict, Literal
 
 import pandas as pd
 
@@ -49,12 +50,18 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False,
     df.drop(["Unnamed: 0"], axis=1, inplace=True)
     df.dropna(subset=["license"], inplace=True)
 
-    # df.drop_duplicates(subset=["name"], inplace=True)  # <- TODO questionable. Is this fine?
     if drop_duplicate_licenses:
         df.drop_duplicates(subset=["license"], inplace=True)
         _log.warning("Dropping duplicate licenses from dataset.")
 
     return df
+
+
+class MapOutputEntry(TypedDict):
+    idx: int
+    license: str | None
+    mapping_type: str
+    map_name: str
 
 
 class MapPipeline:
@@ -64,15 +71,18 @@ class MapPipeline:
         self.last_mapped_by_map: dict[
             str, list[tuple[int, str, str, str]]] = {}  # (idx, original_license, identifier, mapping_type)
         self.last_unresolved_by_map: dict[str, list[tuple[int, str]]] = {}
-        self.mapped_idx_to_result: dict[int, tuple[str, str]] = {}  # idx -> (identifier, mapping_type)
 
-    def run(self, df: pd.DataFrame) -> tuple[set, set]:
-        mapped_rows_indices = set()
+    def run(self, df: pd.DataFrame) -> tuple[list, list, set[int]]:
+        mapped_rows_indices: list[MapOutputEntry] = list()
+        # Contains each fail to map a field, meaning there can be multiple entries for the same row if it failed to
+        # map in multiple maps.
+        failed_rows_indices: list[MapOutputEntry] = list()
+
+        # Contains only rows not yet mapped by any map.
         unresolved_rows_indices = set(df["idx"])
 
         self.last_mapped_by_map = {}
         self.last_unresolved_by_map = {}
-        self.mapped_idx_to_result = {}
 
         rows_by_idx = df.set_index("idx")
 
@@ -92,23 +102,30 @@ class MapPipeline:
 
                 result = license_map.map(row_license_normalized)
 
+                output_entry = MapOutputEntry(idx=idx, map_name=map_name)
+
                 if result is None:
                     next_unresolved_rows_indices.add(idx)
                     unresolved_by_this_map.append((idx, row_license))
+                    output_entry["license"] = None
+                    output_entry["mapping_type"] = "undetermined"
+                    failed_rows_indices.append(output_entry)
                     _log.info("❌Map %s did not map input '%s' (%s)",
                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license))
                 elif result == "":
-                    mapped_rows_indices.add(idx)
                     mapped_by_this_map.append((idx, row_license, "", "unknown"))
-                    self.mapped_idx_to_result[idx] = ("", "unknown")
+                    output_entry["license"] = ""
+                    output_entry["mapping_type"] = "unknown"
+                    mapped_rows_indices.append(output_entry)
                     _log.info("✅Map %s confirmed input '%s' (%s) as unknown",
                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license))
                 else:
-                    mapped_rows_indices.add(idx)
                     identifier = result.identifier
                     mapping_type = result.mapping_type
                     mapped_by_this_map.append((idx, row_license, identifier, mapping_type))
-                    self.mapped_idx_to_result[idx] = (identifier, mapping_type)
+                    output_entry["license"] = identifier
+                    output_entry["mapping_type"] = mapping_type
+                    mapped_rows_indices.append(output_entry)
                     _log.info("✅Map %s mapped input '%s' (%s) to %s '%s'",
                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license),
                               mapping_type, identifier)
@@ -117,9 +134,10 @@ class MapPipeline:
             self.last_unresolved_by_map[map_name] = unresolved_by_this_map
             unresolved_rows_indices = next_unresolved_rows_indices
 
-        failed_rows_indices = unresolved_rows_indices
+        # String values of licenses that failed to map.
+        failed_to_map = set(df[df["idx"].isin(unresolved_rows_indices)]["license"])
 
-        return mapped_rows_indices, failed_rows_indices
+        return mapped_rows_indices, failed_rows_indices, failed_to_map
 
 
 def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = None, test_mode: bool = True) -> None:
@@ -146,28 +164,25 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
         maps.MapLicenseFamily(),
         maps.MapFuzzyMatch()
     ])
-    mapped, failed = mp.run(df)
 
-    failed_df = df[[x in failed for x in df["idx"]]]
-    mapped_df = df[[x in mapped for x in df["idx"]]]
-    failed_set = set(failed_df["license"])
-    _log.info("failed to map: %s", failed_set)
+    mapped, map_fails, never_mapped = mp.run(df)
 
-    mapped_results = []
-    for i, (idx, (identifier, mapping_type)) in enumerate(sorted(mp.mapped_idx_to_result.items())):
-        mapped_results.append({
-            "dataset_index": idx,
-            "identifier": identifier,
-            "mapping_type": mapping_type,
-        })
+    _log.info("failed to map: %s", never_mapped)
 
-    mapped_results_df = pd.DataFrame(mapped_results)
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    save_results(mapped, "mapped")
+    save_results(map_fails, "failed")
+
+
+def save_results(mapped: list[MapOutputEntry], result_type: Literal["mapped", "failed"]) -> None:
+    """Save the mapped results to a CSV file in the output directory, with a timestamp in the filename."""
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S__%f")
     output_dir = cvar.data_dir / "output"
-    output_path = output_dir / f"mapped-{timestamp}.csv"
-    os.makedirs(output_dir, exist_ok=True)
-    mapped_results_df.to_csv(output_path, index=True)
-    _log.info("Saved %d mapped results to %s", len(mapped_results_df), output_path)
+    dir_path = output_dir / result_type
+    os.makedirs(dir_path, exist_ok=True)
+    path = dir_path / f"{result_type}_{timestamp}.csv"
+    df = pd.DataFrame(mapped, columns=["idx", "license", "mapping_type", "map_name"])
+    df.to_csv(path, index=False)
+    _log.info("Saved %d %s results to %s", len(mapped), result_type, path)
 
 
 def main(argv: list[str] | None = None):

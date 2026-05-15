@@ -48,10 +48,10 @@ def test_map_pipeline_keeps_none_results_for_later_maps_and_tracks_map_outputs()
     )
 
     pipeline = MapPipeline([FirstPassMap(), SecondPassMap()])
-    mapped, failed = pipeline.run(df)
+    mapped, map_fails, never_mapped = pipeline.run(df)
 
-    assert mapped == {1, 2, 3}
-    assert failed == set()
+    assert len(mapped) == 3
+    assert never_mapped == set()
 
     assert pipeline.last_mapped_by_map["FirstPassMap"] == [(3, "Apache-2.0", "apache 2 0", "spdx_id")]
     assert pipeline.last_unresolved_by_map["FirstPassMap"] == [(1, "MIT License"), (2, "Unknown")]
@@ -68,9 +68,9 @@ def test_map_pipeline_normalizes_license_field_before_map_invocation():
     )
 
     pipeline = MapPipeline([NormalizedApacheMap()])
-    mapped, failed = pipeline.run(df)
+    mapped, map_fails, neverm_mapped = pipeline.run(df)
 
-    assert mapped == {10}
-    assert failed == set()
+    assert mapped == [{'idx': 10, 'license': 'apache 2 0', 'map_name': 'NormalizedApacheMap', 'mapping_type': 'spdx_id'}]
+    assert neverm_mapped == set()
     assert pipeline.last_mapped_by_map["NormalizedApacheMap"] == [(10, "  Apache 2.0  ", "apache 2 0", "spdx_id")]
     assert pipeline.last_unresolved_by_map["NormalizedApacheMap"] == []
