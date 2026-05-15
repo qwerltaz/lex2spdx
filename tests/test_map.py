@@ -74,3 +74,27 @@ def test_map_pipeline_normalizes_license_field_before_map_invocation():
     assert neverm_mapped == set()
     assert pipeline.last_mapped_by_map["NormalizedApacheMap"] == [(10, "  Apache 2.0  ", "apache 2 0", "spdx_id")]
     assert pipeline.last_unresolved_by_map["NormalizedApacheMap"] == []
+
+
+def test_map_pipeline_skips_existing_mapped_results(tmp_path, monkeypatch):
+    mapped_dir = tmp_path / "output" / "mapped"
+    mapped_dir.mkdir(parents=True)
+    pd.DataFrame(
+        [{"idx": 1, "license": "mit", "mapping_type": "spdx_id", "map_name": "MapExactID"}]
+    ).to_csv(mapped_dir / "mapped_1.csv", index=False)
+
+    monkeypatch.setattr("lex2spdx.map.cvar.data_dir", tmp_path)
+
+    df = pd.DataFrame(
+        [
+            {"idx": 1, "license": "MIT License"},
+            {"idx": 2, "license": "Apache-2.0"},
+        ]
+    )
+
+    pipeline = MapPipeline([FirstPassMap(), SecondPassMap()])
+    mapped, map_fails, never_mapped = pipeline.run(df)
+
+    assert mapped == [{"idx": 2, "license": "apache 2 0", "map_name": "FirstPassMap", "mapping_type": "spdx_id"}]
+    assert map_fails == []
+    assert never_mapped == set()

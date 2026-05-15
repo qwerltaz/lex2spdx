@@ -16,6 +16,27 @@ from . import preprocess
 _log = logger.get()
 
 
+def load_already_mapped_indices() -> set[int]:
+    """Load previously mapped row indices from CSVs in the output/mapped directory."""
+    mapped_dir = cvar.data_dir / "output" / "mapped"
+    if not mapped_dir.exists():
+        return set()
+
+    mapped_files = sorted(mapped_dir.glob("*.csv"))
+    if not mapped_files:
+        return set()
+
+    mapped_indices: set[int] = set()
+    for mapped_file in mapped_files:
+        # No try-except. Let it fail on unexpected columns or other error.
+        df = pd.read_csv(mapped_file, usecols=["idx"])
+
+        idx_values = pd.to_numeric(df["idx"], errors="coerce").dropna().astype(int)
+        mapped_indices.update(idx_values.tolist())
+
+    return mapped_indices
+
+
 def load_dataset(sample_size: int | None = None, random_start: bool = False,
                  path: str | None = None, drop_duplicate_licenses: bool = False) -> pd.DataFrame:
     """
@@ -78,8 +99,13 @@ class MapPipeline:
         # map in multiple maps.
         failed_rows_indices: list[MapOutputEntry] = list()
 
+        existing_mapped_indices = load_already_mapped_indices()
+        existing_mapped_in_df = set(df["idx"]).intersection(existing_mapped_indices)
+        if existing_mapped_in_df:
+            _log.info("Skipping %d rows that are already mapped.", len(existing_mapped_in_df))
+
         # Contains only rows not yet mapped by any map.
-        unresolved_rows_indices = set(df["idx"])
+        unresolved_rows_indices = set(df["idx"]) - existing_mapped_in_df
 
         self.last_mapped_by_map = {}
         self.last_unresolved_by_map = {}
@@ -93,7 +119,8 @@ class MapPipeline:
             next_unresolved_rows_indices = set()
 
             for idx in unresolved_rows_indices:
-                _log.debug("Mapping idx %s with license '%s' using map %s", idx, maps.shorten_field(rows_by_idx.loc[idx]["license"]), map_name)
+                _log.debug("Mapping idx %s with license '%s' using map %s", idx,
+                           maps.shorten_field(rows_by_idx.loc[idx]["license"]), map_name)
                 row = rows_by_idx.loc[idx]
                 row_license = str(row["license"])
 
@@ -197,7 +224,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument(
         "-s",
         type=int,
-        default=500,
+        default=100,
         help="Sample size if running on the default dataset.",
     )
     parser.add_argument(
