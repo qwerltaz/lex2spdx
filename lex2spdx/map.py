@@ -93,6 +93,7 @@ class MapPipeline:
             next_unresolved_rows_indices = set()
 
             for idx in unresolved_rows_indices:
+                _log.debug("Mapping idx %s with license '%s' using map %s", idx, maps.shorten_field(rows_by_idx.loc[idx]["license"]), map_name)
                 row = rows_by_idx.loc[idx]
                 row_license = str(row["license"])
 
@@ -196,7 +197,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument(
         "-s",
         type=int,
-        default=100,
+        default=500,
         help="Sample size if running on the default dataset.",
     )
     parser.add_argument(
