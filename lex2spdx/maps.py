@@ -231,8 +231,8 @@ class MapFuzzyMatch(IMap):
             license_field, license_title_texts, scorer=self.scorer_text
         )
 
-        priority_scores2 = sorted([score_text, score_title_text], key=lambda x: x[1], reverse=True)
-        best_text_match, best_text_score, best_text_index = priority_scores2[0]
+        text_scores2 = sorted([score_text, score_title_text], key=lambda x: x[1], reverse=True)
+        best_text_match, best_text_score, best_text_index = text_scores2[0]
         best_text_spdx_id = licenses[best_text_index]["licenseId"]
 
         _log.debug(

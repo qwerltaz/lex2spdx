@@ -129,10 +129,10 @@ class MapPipeline:
             str, list[tuple[int, str, str, str]]] = {}  # (idx, original_license, identifier, mapping_type)
         self.last_unresolved_by_map: dict[str, list[tuple[int, str]]] = {}
 
+        self.save_results_threshold = 10000
+
     def run(self, df: pd.DataFrame) -> tuple[list, list, set[int]]:
         mapped_rows_indices: list[MapOutputEntry] = list()
-        # Contains each fail to map a field, meaning there can be multiple entries for the same row if it failed to
-        # map in multiple maps.
         failed_rows_indices: list[MapOutputEntry] = list()
 
         existing_mapped_indices = load_already_mapped_indices()
@@ -140,66 +140,69 @@ class MapPipeline:
         if existing_mapped_in_df:
             _log.info("Skipping %d rows that are already mapped.", len(existing_mapped_in_df))
 
-        # Contains only rows not yet mapped by any map.
         unresolved_rows_indices = set(df["idx"]) - existing_mapped_in_df
 
-        self.last_mapped_by_map = {}
-        self.last_unresolved_by_map = {}
+        self.last_mapped_by_map = {m.__class__.__name__: [] for m in self.maps}
+        self.last_unresolved_by_map = {m.__class__.__name__: [] for m in self.maps}
 
         rows_by_idx = df.set_index("idx")
+        failed_to_map = set()
 
-        for license_map in self.maps:
-            map_name = license_map.__class__.__name__
-            mapped_by_this_map = []
-            unresolved_by_this_map = []
-            next_unresolved_rows_indices = set()
+        for count, idx in enumerate(unresolved_rows_indices, start=1):
+            row = rows_by_idx.loc[idx]
+            row_license = str(row["license"])
 
-            for idx in unresolved_rows_indices:
+            row_license_normalized = preprocess.normalize_license_field(row_license) or ""
+            _log.debug("normalization changed '%s' to '%s'", maps.shorten_field(row_license),
+                       maps.shorten_field(row_license_normalized))
+
+            is_mapped = False
+            for license_map in self.maps:
+                map_name = license_map.__class__.__name__
+
                 _log.debug("Mapping idx %s with license '%s' using map %s", idx,
-                           maps.shorten_field(rows_by_idx.loc[idx]["license"]), map_name)
-                row = rows_by_idx.loc[idx]
-                row_license = str(row["license"])
-
-                row_license_normalized = preprocess.normalize_license_field(row_license) or ""
-                _log.debug("normalization changed '%s' to '%s'", maps.shorten_field(row_license),
-                           maps.shorten_field(row_license_normalized))
+                           maps.shorten_field(row_license), map_name)
 
                 result = license_map.map(row_license_normalized)
-
                 output_entry = MapOutputEntry(idx=idx, map_name=map_name)
 
                 if result is None:
-                    next_unresolved_rows_indices.add(idx)
-                    unresolved_by_this_map.append((idx, row_license))
+                    self.last_unresolved_by_map[map_name].append((idx, row_license))
                     output_entry["license"] = None
                     output_entry["mapping_type"] = "undetermined"
                     failed_rows_indices.append(output_entry)
-                    _log.info("❌Map %s did not map input '%s' (%s)",
-                              map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license))
+                    _log.debug("❌Map %s did not map input '%s' (%s)",
+                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license))
                 elif result == "":
-                    mapped_by_this_map.append((idx, row_license, "", "unknown"))
+                    self.last_mapped_by_map[map_name].append((idx, row_license, "", "unknown"))
                     output_entry["license"] = ""
                     output_entry["mapping_type"] = "unknown"
                     mapped_rows_indices.append(output_entry)
                     _log.info("✅Map %s confirmed input '%s' (%s) as unknown",
                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license))
+                    is_mapped = True
+                    break
                 else:
                     identifier = result.identifier
                     mapping_type = result.mapping_type
-                    mapped_by_this_map.append((idx, row_license, identifier, mapping_type))
+                    self.last_mapped_by_map[map_name].append((idx, row_license, identifier, mapping_type))
                     output_entry["license"] = identifier
                     output_entry["mapping_type"] = mapping_type
                     mapped_rows_indices.append(output_entry)
                     _log.info("✅Map %s mapped input '%s' (%s) to %s '%s'",
                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license),
                               mapping_type, identifier)
+                    is_mapped = True
+                    break
 
-            self.last_mapped_by_map[map_name] = mapped_by_this_map
-            self.last_unresolved_by_map[map_name] = unresolved_by_this_map
-            unresolved_rows_indices = next_unresolved_rows_indices
+            if not is_mapped:
+                failed_to_map.add(row_license)
 
-        # String values of licenses that failed to map.
-        failed_to_map = set(df[df["idx"].isin(unresolved_rows_indices)]["license"])
+            if len(mapped_rows_indices) >= self.save_results_threshold:
+                save_results(mapped_rows_indices, "mapped")
+                save_results(failed_rows_indices, "failed")
+                mapped_rows_indices.clear()
+                failed_rows_indices.clear()
 
         return mapped_rows_indices, failed_rows_indices, failed_to_map
 
@@ -237,8 +240,10 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
 
     _log.info("failed to map: %s", never_mapped)
 
-    save_results(mapped, "mapped")
-    save_results(map_fails, "failed")
+    if mapped:
+        save_results(mapped, "mapped")
+    if map_fails:
+        save_results(map_fails, "failed")
 
 
 def save_results(mapped: list[MapOutputEntry], result_type: Literal["mapped", "failed"]) -> None:
