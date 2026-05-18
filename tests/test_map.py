@@ -38,7 +38,7 @@ class NormalizedApacheMap(IMap):
         return None
 
 
-def test_map_pipeline_keeps_none_results_for_later_maps_and_tracks_map_outputs():
+def test_map_pipeline_keeps_none_results_for_later_maps_and_tracks_map_outputs(monkeypatch):
     df = pd.DataFrame(
         [
             {"idx": 1, "license": "MIT License"},
@@ -46,6 +46,8 @@ def test_map_pipeline_keeps_none_results_for_later_maps_and_tracks_map_outputs()
             {"idx": 3, "license": "Apache-2.0"},
         ]
     )
+
+    monkeypatch.setattr("lex2spdx.map.load_already_mapped_indices", lambda: set())
 
     pipeline = MapPipeline([FirstPassMap(), SecondPassMap()])
     mapped, map_fails, never_mapped = pipeline.run(df)
@@ -60,12 +62,14 @@ def test_map_pipeline_keeps_none_results_for_later_maps_and_tracks_map_outputs()
     assert pipeline.last_unresolved_by_map["SecondPassMap"] == []
 
 
-def test_map_pipeline_normalizes_license_field_before_map_invocation():
+def test_map_pipeline_normalizes_license_field_before_map_invocation(monkeypatch):
     df = pd.DataFrame(
         [
             {"idx": 10, "license": "  Apache 2.0  "},
         ]
     )
+
+    monkeypatch.setattr("lex2spdx.map.load_already_mapped_indices", lambda: set())
 
     pipeline = MapPipeline([NormalizedApacheMap()])
     mapped, map_fails, neverm_mapped = pipeline.run(df)
