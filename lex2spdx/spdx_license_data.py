@@ -104,3 +104,15 @@ class LicenseDataNormalized:
     license_names = tuple(map(lambda x: x["name"], licenses))
     license_title_texts = tuple(map(lambda x: x["titleText"], licenses))
     license_texts = tuple(map(lambda x: x["text"], licenses))
+
+
+def get_normalized_to_original_id_mapping() -> dict[str, str]:
+    """Create a mapping from normalized SPDX license IDs to their original IDs."""
+    normalized_licenses = LicenseDataNormalized.licenses
+    original_licenses = LicenseData.licenses
+
+    mapping = {}
+    for normalized, original in zip(normalized_licenses, original_licenses):
+        mapping[normalized["licenseId"]] = original["licenseId"]
+
+    return mapping

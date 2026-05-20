@@ -13,6 +13,7 @@ from . import cvar
 from . import logger
 from . import maps
 from . import preprocess
+from . import spdx_license_data
 
 _log = logger.get()
 
@@ -128,6 +129,7 @@ class MapPipeline:
         self.last_mapped_by_map: dict[
             str, list[tuple[int, str, str, str]]] = {}  # (idx, original_license, identifier, mapping_type)
         self.last_unresolved_by_map: dict[str, list[tuple[int, str]]] = {}
+        self.normalized_to_original_id = spdx_license_data.get_normalized_to_original_id_mapping()
 
         self.save_results_threshold = 10000
 
@@ -185,13 +187,19 @@ class MapPipeline:
                 else:
                     identifier = result.identifier
                     mapping_type = result.mapping_type
+
+                    if mapping_type == "spdx_id" and identifier in self.normalized_to_original_id:
+                        identifier = self.normalized_to_original_id[identifier]
+
                     self.last_mapped_by_map[map_name].append((idx, row_license, identifier, mapping_type))
                     output_entry["license"] = identifier
                     output_entry["mapping_type"] = mapping_type
                     mapped_rows_indices.append(output_entry)
+
                     _log.info("✅Map %s mapped input '%s' (%s) to %s '%s'",
-                              map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license),
-                              mapping_type, identifier)
+                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license),
+                               mapping_type, identifier)
+
                     is_mapped = True
                     break
 

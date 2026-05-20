@@ -55,10 +55,10 @@ def test_map_pipeline_keeps_none_results_for_later_maps_and_tracks_map_outputs(m
     assert len(mapped) == 3
     assert never_mapped == set()
 
-    assert pipeline.last_mapped_by_map["FirstPassMap"] == [(3, "Apache-2.0", "apache 2 0", "spdx_id")]
+    assert pipeline.last_mapped_by_map["FirstPassMap"] == [(3, "Apache-2.0", "Apache-2.0", "spdx_id")]
     assert pipeline.last_unresolved_by_map["FirstPassMap"] == [(1, "MIT License"), (2, "Unknown")]
 
-    assert pipeline.last_mapped_by_map["SecondPassMap"] == [(1, "MIT License", "mit", "spdx_id"), (2, "Unknown", "", "unknown")]
+    assert pipeline.last_mapped_by_map["SecondPassMap"] == [(1, "MIT License", "MIT", "spdx_id"), (2, "Unknown", "", "unknown")]
     assert pipeline.last_unresolved_by_map["SecondPassMap"] == []
 
 
@@ -74,9 +74,9 @@ def test_map_pipeline_normalizes_license_field_before_map_invocation(monkeypatch
     pipeline = MapPipeline([NormalizedApacheMap()])
     mapped, map_fails, neverm_mapped = pipeline.run(df)
 
-    assert mapped == [{'idx': 10, 'license': 'apache 2 0', 'map_name': 'NormalizedApacheMap', 'mapping_type': 'spdx_id'}]
+    assert mapped == [{'idx': 10, 'license': 'Apache-2.0', 'map_name': 'NormalizedApacheMap', 'mapping_type': 'spdx_id'}]
     assert neverm_mapped == set()
-    assert pipeline.last_mapped_by_map["NormalizedApacheMap"] == [(10, "  Apache 2.0  ", "apache 2 0", "spdx_id")]
+    assert pipeline.last_mapped_by_map["NormalizedApacheMap"] == [(10, "  Apache 2.0  ", "Apache-2.0", "spdx_id")]
     assert pipeline.last_unresolved_by_map["NormalizedApacheMap"] == []
 
 
@@ -99,6 +99,6 @@ def test_map_pipeline_skips_existing_mapped_results(tmp_path, monkeypatch):
     pipeline = MapPipeline([FirstPassMap(), SecondPassMap()])
     mapped, map_fails, never_mapped = pipeline.run(df)
 
-    assert mapped == [{"idx": 2, "license": "apache 2 0", "map_name": "FirstPassMap", "mapping_type": "spdx_id"}]
+    assert mapped == [{"idx": 2, "license": "Apache-2.0", "map_name": "FirstPassMap", "mapping_type": "spdx_id"}]
     assert map_fails == []
     assert never_mapped == set()
