@@ -73,7 +73,7 @@ def load_already_mapped_indices() -> set[int]:
 
 
 def load_dataset(sample_size: int | None = None, random_start: bool = False,
-                 path: str | None = None, drop_duplicate_licenses: bool = False) -> pd.DataFrame:
+                 path: str | None = None, drop_duplicate_licenses: bool = True) -> pd.DataFrame:
     """
     Loads the PyPI metadata dataset and drops empty license fields.
 
@@ -197,8 +197,8 @@ class MapPipeline:
                     mapped_rows_indices.append(output_entry)
 
                     _log.info("✅Map %s mapped input '%s' (%s) to %s '%s'",
-                               map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license),
-                               mapping_type, identifier)
+                              map_name, maps.shorten_field(row_license_normalized), maps.shorten_field(row_license),
+                              mapping_type, identifier)
 
                     is_mapped = True
                     break
@@ -227,14 +227,12 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
     if sample_size == -1:
         sample_size = None
 
-    drop_duplicate_licenses = sample_size is not None
-
     if on_test_dataset:
         df = load_dataset(9999, False, cvar.data_dir / "pypi/test/test.csv")
     else:
         random_start = isinstance(sample_size, int) and sample_size >= 0
         df_path = cvar.pypi_unique_licenses_dataset_path if test_mode else None
-        df = load_dataset(sample_size, random_start, df_path, drop_duplicate_licenses)
+        df = load_dataset(sample_size, random_start, df_path)
 
     mp = MapPipeline([
         maps.MapNA(),
