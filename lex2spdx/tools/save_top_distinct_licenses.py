@@ -34,3 +34,6 @@ def main(argv: list[str] | None = None):
     args = parser.parse_args(argv)
 
     save_top_distinct_licenses(args.n)
+
+if __name__ == '__main__':
+    main()
