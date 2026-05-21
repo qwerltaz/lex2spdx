@@ -20,22 +20,8 @@ class MapResult:
     mapping_type: Literal["spdx_id", "license_family"]
 
 
-LICENSE_FAMILIES = {
-    "BSD": ["0BSD", "BSD-1-Clause", "BSD-2-Clause", "BSD-2-Clause-Darwin", "BSD-2-Clause-FreeBSD",
-            "BSD-2-Clause-NetBSD", "BSD-2-Clause-Patent", "BSD-2-Clause-Views", "BSD-3-Clause",
-            "BSD-3-Clause-Attribution", "BSD-3-Clause-Clear", "BSD-3-Clause-LBNL", "BSD-3-Clause-Modification-Variant",
-            "BSD-3-Clause-No-Nuclear-License", "BSD-3-Clause-No-Nuclear-License-2014",
-            "BSD-3-Clause-No-Nuclear-Warranty",
-            "BSD-Source-Code", "FreeBSD-DOC"],
-    "GPL": ["GPL-1.0-only", "GPL-1.0-or-later", "GPL-2.0-only", "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later"],
-    "LGPL": ["LGPL-2.0-only", "LGPL-2.0-or-later", "LGPL-2.1-only", "LGPL-2.1-or-later", "LGPL-3.0-only",
-             "LGPL-3.0-or-later"],
-    "AGPL": ["AGPL-1.0-only", "AGPL-1.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later"],
-    "Apache": ["Apache-1.0", "Apache-1.1", "Apache-2.0"],
-    "MPL": ["MPL-1.0", "MPL-1.1", "MPL-2.0", "MPL-2.0-no-copyleft-exception"],
-    "ISC": ["ISC"],
-    "Artistic": ["Artistic-1.0", "Artistic-1.0-cl8", "Artistic-1.0-Perl", "Artistic-2.0"],
-}
+with open(cvar.resources_dir / "license-families.json", "r", encoding="utf-8") as f:
+    LICENSE_FAMILIES = json.load(f)
 
 SPDX_ID_TO_FAMILY = {}
 for family, spdx_ids in LICENSE_FAMILIES.items():
