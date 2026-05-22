@@ -61,7 +61,7 @@ _logging_config = {
     "handlers": {
         "stdout": {
             "class": "logging.StreamHandler",
-            "level": "DEBUG",
+            "level": "WARNING",
             "formatter": "color_verbose",
             "stream": "ext://sys.stdout",
         },
