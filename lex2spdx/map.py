@@ -215,13 +215,14 @@ class MapPipeline:
         return mapped_rows_indices, failed_rows_indices, failed_to_map
 
 
-def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = None, test_mode: bool = True) -> None:
+def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = None,
+                     unique_entries_dataset: bool = True) -> None:
     """
     Run the mapping pipeline on the PyPI dataset and save the mapped results to a CSV file.
 
     :param on_test_dataset: Whether to run the mapping pipeline on the test dataset.
     :param sample_size: The number of rows to load from the dataset. If None,
-    :param test_mode: Enable test mode to run on smaller dataset with unique entries.
+    :param unique_entries_dataset: Run on dataset with only unique entries.
     load the full dataset. Ignored if on_test_dataset is True.
     """
     if sample_size == -1:
@@ -231,7 +232,7 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
         df = load_dataset(9999, False, cvar.data_dir / "pypi/test/test.csv")
     else:
         random_start = isinstance(sample_size, int) and sample_size >= 0
-        df_path = cvar.pypi_unique_licenses_dataset_path if test_mode else None
+        df_path = cvar.pypi_unique_licenses_dataset_path if unique_entries_dataset else None
         df = load_dataset(sample_size, random_start, df_path)
 
     mp = MapPipeline([
@@ -281,7 +282,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument(
         "-r",
         action="store_true",
-        help="Enable test run for debugging the map pipeline."
+        help="Run on dataset with only unique license entries."
     )
     args = parser.parse_args(argv)
 
