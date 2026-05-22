@@ -8,6 +8,7 @@ from typing import TypedDict, Literal
 import json
 
 import pandas as pd
+from tqdm import tqdm
 
 from . import cvar
 from . import logger
@@ -150,7 +151,7 @@ class MapPipeline:
         rows_by_idx = df.set_index("idx")
         failed_to_map = set()
 
-        for count, idx in enumerate(unresolved_rows_indices, start=1):
+        for count, idx in tqdm(enumerate(unresolved_rows_indices, start=1), total=len(unresolved_rows_indices), desc="Mapping rows"):
             row = rows_by_idx.loc[idx]
             row_license = str(row["license"])
 
