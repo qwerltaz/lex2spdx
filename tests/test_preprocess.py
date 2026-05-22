@@ -21,7 +21,7 @@ def test_normalize_license_field():
     assert normalize_license_field("MIT    license    or    Apache") == "mit license or apache"
 
     long_text = "a" * 1500
-    truncated = normalize_license_field(long_text)
+    truncated = normalize_license_field(long_text, truncate_long_texts=True)
     assert len(truncated) <= 1000
 
 
@@ -54,10 +54,10 @@ def test_normalize_license_field_truncate_long_texts():
 def test_normalize_license_field_custom_truncate_max_length():
     long_text = "a" * 1500
 
-    truncated_500 = normalize_license_field(long_text, truncate_max_length=500)
+    truncated_500 = normalize_license_field(long_text, truncate_long_texts=True, truncate_max_length=500)
     assert len(truncated_500) <= 500
 
-    truncated_200 = normalize_license_field(long_text, truncate_max_length=200)
+    truncated_200 = normalize_license_field(long_text, truncate_long_texts=True, truncate_max_length=200)
     assert len(truncated_200) <= 200
 
     not_truncated = normalize_license_field(long_text, truncate_long_texts=False, truncate_max_length=100)
@@ -67,7 +67,7 @@ def test_normalize_license_field_custom_truncate_max_length():
 def test_normalize_license_field_arguments_combined():
     text = "The MIT license or Apache version 2 dot 0 " + "a" * 1000
 
-    result = normalize_license_field(text, remove_stop_words=False, truncate_max_length=300)
+    result = normalize_license_field(text, remove_stop_words=False, truncate_long_texts=True, truncate_max_length=300)
     assert len(result) <= 300
     assert "license" in result
     assert "version" in result

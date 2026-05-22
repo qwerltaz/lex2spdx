@@ -18,7 +18,7 @@ def normalize_license_field(text: None, *args, **kwargs) -> None: ...
 def normalize_license_field(text: str, *args, **kwargs) -> str: ...
 
 
-def normalize_license_field(text: str | None, remove_stop_words: bool = False, truncate_long_texts: bool = True,
+def normalize_license_field(text: str | None, remove_stop_words: bool = False, truncate_long_texts: bool = False,
                             truncate_max_length: int = 1000) -> str | None:
     """
     Normalize whitespace, spacing, and common wording variants in free-text license fields.
