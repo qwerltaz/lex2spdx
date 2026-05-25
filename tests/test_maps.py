@@ -15,7 +15,7 @@ def test_map_na():
     unmappable_values = [
         "license.txt",
         "free for non commercial use",
-        "inline license",
+        "inline_license",
     ]
     unmappable_values = [normalize_license_field(x) for x in unmappable_values]
 

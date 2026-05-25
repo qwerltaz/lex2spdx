@@ -2,13 +2,15 @@ import json
 import re
 from typing import overload
 
-import rapidfuzz
-
 from lex2spdx import cvar
 
 with open(cvar.resources_dir / "stop-words.json", "r", encoding="utf-8") as f:
     _stop_words = set(json.load(f))
 
+# Leave alphanumeric characters and also those important to license classification, such as '+'.
+_allowed_non_alphanumeric_chars = "+"
+_allowed_non_alphanumeric_pattern = re.escape(_allowed_non_alphanumeric_chars)
+_alphanumeric_plus_regex = re.compile(rf"(?ui)[^\w{_allowed_non_alphanumeric_pattern}]")
 
 @overload
 def normalize_license_field(text: None, *args, **kwargs) -> None: ...
@@ -41,7 +43,8 @@ def normalize_license_field(text: str | None, remove_stop_words: bool = False, t
     if truncate_long_texts and len(text) > truncate_max_length:
         text = text[:truncate_max_length]
 
-    text_normalized = rapidfuzz.utils.default_process(text)
+    text_normalized = _alphanumeric_plus_regex.sub(" ", text)
+    text_normalized = text_normalized.strip().lower()
 
     text_normalized = re.sub(r"\s+", " ", text_normalized)
 
@@ -56,3 +59,5 @@ def normalize_license_field(text: str | None, remove_stop_words: bool = False, t
         text_normalized = " ".join(words)
 
     return text_normalized
+
+print(normalize_license_field("inline_license"))
