@@ -92,8 +92,7 @@ class MapExactMatch(IMap):
         for license_spdx in LicenseDataNormalized.licenses:
             text = license_spdx["text"]
             name = license_spdx["name"]
-            id = license_spdx["licenseId"]
-            candidates = [text, name, id]
+            candidates = [text, name]
 
             for candidate in candidates:
                 if candidate and license_field == candidate:
