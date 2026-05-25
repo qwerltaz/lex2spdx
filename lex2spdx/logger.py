@@ -114,3 +114,21 @@ def get() -> logging.Logger:
 
     logger.info("Hi.")
     return logger
+
+
+def set_stdout_log_level(level: int | str) -> None:
+    _configure_logging_once()
+
+    # Convert string level to int if needed
+    if isinstance(level, str):
+        level = logging.getLevelName(level)
+
+    # Find and update the stdout handler
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers:
+        if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stdout:
+            handler.setLevel(level)
+            return
+
+    # If stdout handler not found, raise an error
+    raise ValueError("stdout handler not found in root logger")
