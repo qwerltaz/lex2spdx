@@ -12,6 +12,7 @@ _allowed_non_alphanumeric_chars = "+"
 _allowed_non_alphanumeric_pattern = re.escape(_allowed_non_alphanumeric_chars)
 _alphanumeric_plus_regex = re.compile(rf"(?ui)[^\w{_allowed_non_alphanumeric_pattern}]")
 
+
 @overload
 def normalize_license_field(text: None, *args, **kwargs) -> None: ...
 
@@ -59,5 +60,3 @@ def normalize_license_field(text: str | None, remove_stop_words: bool = False, t
         text_normalized = " ".join(words)
 
     return text_normalized
-
-print(normalize_license_field("inline_license"))
