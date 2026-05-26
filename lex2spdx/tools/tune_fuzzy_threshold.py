@@ -105,15 +105,6 @@ def _compute_metrics(df: pd.DataFrame, threshold: int) -> Metrics:
         ground_truth = row["ground_truth"]
         if _is_correct_prediction(predicted, ground_truth):
             correct_mapped += 1
-        else:
-            _log.warning(
-                "Incorrect mapping at threshold %s: idx=%s\nlicense=%s\npredicted=%s\nground_truth=%s",
-                threshold,
-                row["idx"],
-                row["license"],
-                predicted,
-                ground_truth,
-            )
 
     coverage = (mapped_count / total_count) if total_count else None
     precision = (correct_mapped / mapped_count) if mapped_count else None
