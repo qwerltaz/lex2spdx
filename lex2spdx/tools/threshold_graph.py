@@ -94,11 +94,9 @@ def plot_threshold_tuning(
 
     plt.tight_layout()
 
-    if output_path:
-        plt.savefig(output_path, dpi=300, bbox_inches="tight")
-        print(f"Plot saved to {output_path}")
-    else:
-        plt.show()
+    output_path = validation_csv.parent / "threshold_tuning_results.png"
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.show()
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -114,11 +112,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--best-json",
         type=Path,
         help="Path to fuzzy_threshold_best.json file (optional).",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        help="Path to save the plot image. If not provided, display interactively.",
     )
     parser.add_argument(
         "--run-dir",
@@ -144,7 +137,7 @@ def main(argv: list[str] | None = None) -> None:
         validation_csv = args.validation_csv
         best_json = args.best_json
 
-    plot_threshold_tuning(validation_csv, best_json, args.output)
+    plot_threshold_tuning(validation_csv, best_json)
 
 
 if __name__ == "__main__":
