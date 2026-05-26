@@ -1,0 +1,16 @@
+{
+  "test": {
+    "correct_mapped": 40,
+    "correct_mapped_equiv": 57,
+    "coverage": 0.8131868131868132,
+    "f1": 0.48484848484848486,
+    "f1_equiv": 0.690909090909091,
+    "mapped_count": 74,
+    "precision": 0.5405405405405406,
+    "precision_equiv": 0.7702702702702703,
+    "recall": 0.43956043956043955,
+    "recall_equiv": 0.6263736263736264,
+    "threshold": 96,
+    "total_count": 91
+  }
+}
