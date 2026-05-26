@@ -127,6 +127,30 @@ def _compute_metrics(df: pd.DataFrame, threshold: int) -> Metrics:
     )
 
 
+def _collect_wrong_predictions(df: pd.DataFrame, threshold: int) -> pd.DataFrame:
+    fuzzy_map = maps.MapFuzzyMatch()
+    fuzzy_map.fuzzy_match_threshold = threshold
+
+    records: list[dict[str, object]] = []
+    for _, row in df.iterrows():
+        result = fuzzy_map.map(row["license_normalized"])
+        predicted = result.identifier if isinstance(result, maps.MapResult) else None
+        if predicted is None:
+            continue
+        ground_truth = row["ground_truth"]
+        if _is_correct_prediction(predicted, ground_truth):
+            continue
+        records.append({
+            "idx": row["idx"],
+            "license": row["license"],
+            "license_normalized": row["license_normalized"],
+            "ground_truth": ground_truth,
+            "predicted": predicted,
+        })
+
+    return pd.DataFrame.from_records(records)
+
+
 def _select_best(metrics: list[Metrics], objective: str) -> Metrics:
     if not metrics:
         raise ValueError("No metrics to select from.")
@@ -163,6 +187,7 @@ def _write_outputs(
         validation_metrics: list[Metrics],
         best_validation: Metrics,
         test_metrics: Metrics | None,
+        wrong_predictions: pd.DataFrame | None,
         config: dict[str, object],
 ) -> dict[str, Path | None]:
     timestamped_dir = output_dir / timestamp
@@ -171,6 +196,7 @@ def _write_outputs(
     validation_path = timestamped_dir / "fuzzy_threshold_validation.csv"
     best_path = timestamped_dir / "fuzzy_threshold_best.json"
     test_path = timestamped_dir / "fuzzy_threshold_test.json"
+    wrong_predictions_path = timestamped_dir / "fuzzy_threshold_wrong_predictions.csv"
 
     _metrics_to_frame(validation_metrics).to_csv(validation_path, index=False)
 
@@ -186,10 +212,14 @@ def _write_outputs(
         with open(test_path, "w", encoding="utf-8") as handle:
             json.dump({"test": test_metrics.__dict__}, handle, indent=2, sort_keys=True)
 
+    if wrong_predictions is not None:
+        wrong_predictions.to_csv(wrong_predictions_path, index=False)
+
     return {
         "validation_path": validation_path,
         "best_path": best_path,
         "test_path": test_path if test_metrics is not None else None,
+        "wrong_predictions_path": wrong_predictions_path if wrong_predictions is not None else None,
     }
 
 
@@ -265,6 +295,11 @@ def main(argv: list[str] | None = None) -> None:
     if not test.empty:
         test_metrics = _compute_metrics(test, best_validation.threshold)
 
+    wrong_source = test if not test.empty else validation
+    wrong_predictions = _collect_wrong_predictions(wrong_source, best_validation.threshold)
+    if wrong_predictions.empty:
+        wrong_predictions = None
+
     config = {
         "validation_path": str(args.validation_path),
         "test_path": str(args.test_path),
@@ -282,6 +317,7 @@ def main(argv: list[str] | None = None) -> None:
         validation_metrics,
         best_validation,
         test_metrics,
+        wrong_predictions,
         config,
     )
 
@@ -300,6 +336,8 @@ def main(argv: list[str] | None = None) -> None:
     _log.info("Wrote best threshold to %s", outputs["best_path"])
     if outputs["test_path"] is not None:
         _log.info("Wrote test metrics to %s", outputs["test_path"])
+    if outputs["wrong_predictions_path"] is not None:
+        _log.info("Wrote wrong predictions to %s", outputs["wrong_predictions_path"])
 
 
 if __name__ == "__main__":
