@@ -15,8 +15,8 @@ def test_normalize_license_field():
     assert normalize_license_field("Apache License, Version 2.0") == "apache license version 2 0"
     assert normalize_license_field("Apache 2.0") == "apache 2 0"
 
-    assert normalize_license_field("gpl3") == "gpl 3"
-    assert normalize_license_field("GPLv3") == "gpl 3"
+    assert normalize_license_field("gpl3") == "gpl 3 0"
+    assert normalize_license_field("GPLv3") == "gpl 3 0"
 
     assert normalize_license_field("MIT    license    or    Apache") == "mit license or apache"
 

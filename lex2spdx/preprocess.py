@@ -51,6 +51,8 @@ def normalize_license_field(text: str | None, remove_stop_words: bool = False, t
     # gplv3 -> gpl 3.
     text_normalized = re.sub(r"gplv(\d)", r"gpl \1", text_normalized)
 
+    text_normalized = re.sub(r"gpl (\d)", r"gpl \1 0", text_normalized)
+
     if remove_stop_words:
         words = text_normalized.split()
         words = [word for word in words if word not in _stop_words]
