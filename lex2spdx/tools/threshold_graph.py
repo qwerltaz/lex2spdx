@@ -34,7 +34,11 @@ def plot_threshold_tuning(
 
     # 1. Precision vs Recall.
     ax = axes[0, 0]
-    ax.plot(validation_df["recall"], validation_df["precision"], marker="o", linewidth=2, markersize=5)
+    ax.plot(validation_df["recall"], validation_df["precision"], marker="o", linewidth=2, markersize=5,
+            label="Exact")
+    if "recall_equiv" in validation_df.columns and "precision_equiv" in validation_df.columns:
+        ax.plot(validation_df["recall_equiv"], validation_df["precision_equiv"], marker="s", linewidth=2,
+                markersize=5, label="Equiv")
     if best_threshold is not None:
         best_row = validation_df[validation_df["threshold"] == best_threshold]
         if not best_row.empty:
@@ -46,11 +50,15 @@ def plot_threshold_tuning(
     ax.set_xlabel("Recall", fontsize=11)
     ax.set_ylabel("Precision", fontsize=11)
     ax.set_title("Precision vs Recall", fontweight="bold")
+    ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3)
 
     # 2. F1 Score vs Threshold.
     ax = axes[0, 1]
     ax.plot(validation_df["threshold"], validation_df["f1"], marker="o", linewidth=2, markersize=5, color="green")
+    if "f1_equiv" in validation_df.columns:
+        ax.plot(validation_df["threshold"], validation_df["f1_equiv"], marker="s", linewidth=2, markersize=5,
+                color="teal", label="F1 (equiv)")
     if best_threshold is not None:
         best_f1 = validation_df[validation_df["threshold"] == best_threshold]["f1"].values[0]
         ax.scatter([best_threshold], [best_f1], color="red", s=200, marker="*", zorder=5,
@@ -59,6 +67,8 @@ def plot_threshold_tuning(
     ax.set_xlabel("Threshold", fontsize=11)
     ax.set_ylabel("F1 Score", fontsize=11)
     ax.set_title("F1 Score vs Threshold", fontweight="bold")
+    if "f1_equiv" in validation_df.columns:
+        ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3)
 
     # 3. Precision, Recall, Coverage vs Threshold.
@@ -66,6 +76,11 @@ def plot_threshold_tuning(
     ax.plot(validation_df["threshold"], validation_df["precision"], marker="o", label="Precision", linewidth=2,
             markersize=4)
     ax.plot(validation_df["threshold"], validation_df["recall"], marker="s", label="Recall", linewidth=2, markersize=4)
+    if "precision_equiv" in validation_df.columns and "recall_equiv" in validation_df.columns:
+        ax.plot(validation_df["threshold"], validation_df["precision_equiv"], marker="^", linewidth=2,
+                markersize=4, label="Precision (equiv)")
+        ax.plot(validation_df["threshold"], validation_df["recall_equiv"], marker="D", linewidth=2,
+                markersize=4, label="Recall (equiv)")
     ax.plot(validation_df["threshold"], validation_df["coverage"], marker="^", label="Coverage", linewidth=2,
             markersize=4)
     if best_threshold is not None:
@@ -83,6 +98,9 @@ def plot_threshold_tuning(
             color="purple", label="Mapped")
     ax.plot(validation_df["threshold"], validation_df["correct_mapped"], marker="s", linewidth=2, markersize=5,
             color="orange", label="Correct")
+    if "correct_mapped_equiv" in validation_df.columns:
+        ax.plot(validation_df["threshold"], validation_df["correct_mapped_equiv"], marker="^", linewidth=2,
+                markersize=5, color="green", label="Correct (equiv)")
     if best_threshold is not None:
         best_mapped = validation_df[validation_df["threshold"] == best_threshold]["mapped_count"].values[0]
         ax.scatter([best_threshold], [best_mapped], color="red", s=200, marker="*", zorder=5)

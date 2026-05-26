@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,7 @@ from lex2spdx import cvar
 from lex2spdx import logger
 from lex2spdx import maps
 from lex2spdx import preprocess
+from lex2spdx import spdx_license_data
 
 _log = logger.get()
 
@@ -26,10 +28,14 @@ class Metrics:
     total_count: int
     mapped_count: int
     correct_mapped: int
+    correct_mapped_equiv: int
     coverage: float | None
     precision: float | None
     recall: float | None
     f1: float | None
+    precision_equiv: float | None
+    recall_equiv: float | None
+    f1_equiv: float | None
 
 
 def _load_dataset(path: Path) -> pd.DataFrame:
@@ -89,6 +95,57 @@ def _is_correct_prediction(predicted: str | None, ground_truth: str) -> bool:
     return False
 
 
+_GPL_VARIANT_PATTERN = re.compile(r"^(agpl|gpl|lgpl)\s+(\d+)(?:\s+0){1,2}(?:\s+(?:only|or\s+later))?$")
+
+_NORMALIZED_SPDX_IDS = set(spdx_license_data.LicenseDataNormalized.license_ids)
+
+
+def _build_variant_base_map(license_ids: set[str]) -> dict[str, str]:
+    base_map: dict[str, str] = {}
+    for license_id in license_ids:
+        tokens = license_id.split()
+        base = None
+        for i in range(len(tokens) - 1, 0, -1):
+            candidate = " ".join(tokens[:i])
+            if candidate in license_ids:
+                base = candidate
+                break
+        base_map[license_id] = base or license_id
+    return base_map
+
+
+_VARIANT_BASE_BY_ID = _build_variant_base_map(_NORMALIZED_SPDX_IDS)
+
+
+def _gpl_variant_key(value: str | None) -> tuple[str, int] | None:
+    if not value:
+        return None
+    match = _GPL_VARIANT_PATTERN.match(value)
+    if not match:
+        return None
+    return match.group(1), int(match.group(2))
+
+
+def _variant_base_id(value: str | None) -> str | None:
+    if not value:
+        return None
+    return _VARIANT_BASE_BY_ID.get(value)
+
+
+def _is_equivalent_prediction(predicted: str | None, ground_truth: str) -> bool:
+    if _is_correct_prediction(predicted, ground_truth):
+        return True
+    if not predicted:
+        return False
+    predicted_key = _gpl_variant_key(predicted)
+    ground_truth_key = _gpl_variant_key(ground_truth)
+    if predicted_key is not None and predicted_key == ground_truth_key:
+        return True
+    predicted_base = _variant_base_id(predicted)
+    ground_truth_base = _variant_base_id(ground_truth)
+    return predicted_base is not None and predicted_base == ground_truth_base
+
+
 def _compute_metrics(df: pd.DataFrame, threshold: int) -> Metrics:
     fuzzy_map = maps.MapFuzzyMatch()
     fuzzy_map.fuzzy_match_threshold = threshold
@@ -96,6 +153,7 @@ def _compute_metrics(df: pd.DataFrame, threshold: int) -> Metrics:
     total_count = len(df)
     mapped_count = 0
     correct_mapped = 0
+    correct_mapped_equiv = 0
 
     for _, row in df.iterrows():
         result = fuzzy_map.map(row["license_normalized"])
@@ -105,25 +163,38 @@ def _compute_metrics(df: pd.DataFrame, threshold: int) -> Metrics:
         ground_truth = row["ground_truth"]
         if _is_correct_prediction(predicted, ground_truth):
             correct_mapped += 1
+        if _is_equivalent_prediction(predicted, ground_truth):
+            correct_mapped_equiv += 1
 
     coverage = (mapped_count / total_count) if total_count else None
     precision = (correct_mapped / mapped_count) if mapped_count else None
     recall = (correct_mapped / total_count) if total_count else None
+    precision_equiv = (correct_mapped_equiv / mapped_count) if mapped_count else None
+    recall_equiv = (correct_mapped_equiv / total_count) if total_count else None
 
     if precision and recall and (precision + recall) > 0:
         f1 = 2 * precision * recall / (precision + recall)
     else:
         f1 = None
 
+    if precision_equiv and recall_equiv and (precision_equiv + recall_equiv) > 0:
+        f1_equiv = 2 * precision_equiv * recall_equiv / (precision_equiv + recall_equiv)
+    else:
+        f1_equiv = None
+
     return Metrics(
         threshold=threshold,
         total_count=total_count,
         mapped_count=mapped_count,
         correct_mapped=correct_mapped,
+        correct_mapped_equiv=correct_mapped_equiv,
         coverage=coverage,
         precision=precision,
         recall=recall,
         f1=f1,
+        precision_equiv=precision_equiv,
+        recall_equiv=recall_equiv,
+        f1_equiv=f1_equiv,
     )
 
 
@@ -138,7 +209,9 @@ def _collect_wrong_predictions(df: pd.DataFrame, threshold: int) -> pd.DataFrame
         if predicted is None:
             continue
         ground_truth = row["ground_truth"]
-        if _is_correct_prediction(predicted, ground_truth):
+        exact_correct = _is_correct_prediction(predicted, ground_truth)
+        equiv_correct = _is_equivalent_prediction(predicted, ground_truth)
+        if exact_correct:
             continue
         records.append({
             "idx": row["idx"],
@@ -146,6 +219,8 @@ def _collect_wrong_predictions(df: pd.DataFrame, threshold: int) -> pd.DataFrame
             "license_normalized": row["license_normalized"],
             "ground_truth": ground_truth,
             "predicted": predicted,
+            "exact_correct": exact_correct,
+            "equiv_correct": equiv_correct,
         })
 
     return pd.DataFrame.from_records(records)
@@ -172,10 +247,14 @@ def _metrics_to_frame(metrics: list[Metrics]) -> pd.DataFrame:
             "total_count": item.total_count,
             "mapped_count": item.mapped_count,
             "correct_mapped": item.correct_mapped,
+            "correct_mapped_equiv": item.correct_mapped_equiv,
             "coverage": item.coverage,
             "precision": item.precision,
             "recall": item.recall,
             "f1": item.f1,
+            "precision_equiv": item.precision_equiv,
+            "recall_equiv": item.recall_equiv,
+            "f1_equiv": item.f1_equiv,
         }
         for item in metrics
     ])
@@ -325,11 +404,17 @@ def main(argv: list[str] | None = None) -> None:
     _log.info("Validation precision: %s", best_validation.precision)
     _log.info("Validation recall: %s", best_validation.recall)
     _log.info("Validation f1: %s", best_validation.f1)
+    _log.info("Validation precision (equiv): %s", best_validation.precision_equiv)
+    _log.info("Validation recall (equiv): %s", best_validation.recall_equiv)
+    _log.info("Validation f1 (equiv): %s", best_validation.f1_equiv)
     _log.info("Validation coverage: %s", best_validation.coverage)
     if test_metrics is not None:
         _log.info("Test precision: %s", test_metrics.precision)
         _log.info("Test recall: %s", test_metrics.recall)
         _log.info("Test f1: %s", test_metrics.f1)
+        _log.info("Test precision (equiv): %s", test_metrics.precision_equiv)
+        _log.info("Test recall (equiv): %s", test_metrics.recall_equiv)
+        _log.info("Test f1 (equiv): %s", test_metrics.f1_equiv)
         _log.info("Test coverage: %s", test_metrics.coverage)
 
     _log.info("Wrote validation grid to %s", outputs["validation_path"])

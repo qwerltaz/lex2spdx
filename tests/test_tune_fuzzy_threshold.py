@@ -99,15 +99,23 @@ def test_compute_metrics_and_select_best(monkeypatch: pytest.MonkeyPatch) -> Non
 
     assert metrics_70.mapped_count == 2
     assert metrics_70.correct_mapped == 1
+    assert metrics_70.correct_mapped_equiv == 1
     assert metrics_70.precision == pytest.approx(0.5)
     assert metrics_70.recall == pytest.approx(1 / 3)
     assert metrics_70.f1 == pytest.approx(0.4)
+    assert metrics_70.precision_equiv == pytest.approx(0.5)
+    assert metrics_70.recall_equiv == pytest.approx(1 / 3)
+    assert metrics_70.f1_equiv == pytest.approx(0.4)
 
     assert metrics_85.mapped_count == 1
     assert metrics_85.correct_mapped == 1
+    assert metrics_85.correct_mapped_equiv == 1
     assert metrics_85.precision == pytest.approx(1.0)
     assert metrics_85.recall == pytest.approx(1 / 3)
     assert metrics_85.f1 == pytest.approx(0.5)
+    assert metrics_85.precision_equiv == pytest.approx(1.0)
+    assert metrics_85.recall_equiv == pytest.approx(1 / 3)
+    assert metrics_85.f1_equiv == pytest.approx(0.5)
 
     best = tft._select_best([metrics_70, metrics_85], "f1")
     assert best.threshold == 85
@@ -136,3 +144,22 @@ def test_is_correct_prediction_with_normalized_values() -> None:
     assert tft._is_correct_prediction("mit", "apache") is False
     assert tft._is_correct_prediction(None, "mit") is False
     assert tft._is_correct_prediction("", "mit") is False
+
+
+def test_is_equivalent_prediction_for_gpl_variants() -> None:
+    """Test that _is_equivalent_prediction correctly identifies equivalent GPL variants."""
+    assert tft._is_equivalent_prediction("gpl 3 0 only", "gpl 3 0") is True
+    assert tft._is_equivalent_prediction("gpl 3 0 or later", "gpl 3 0") is True
+    assert tft._is_equivalent_prediction("gpl 3 0", "gpl 3 0 only") is True
+    assert tft._is_equivalent_prediction("agpl 3 0 only", "gpl 3 0") is False
+    assert tft._is_equivalent_prediction("gpl 2 0", "gpl 3 0") is False
+    assert tft._is_equivalent_prediction(None, "gpl 3 0") is False
+
+
+def test_is_equivalent_prediction_for_bsd_variants() -> None:
+    """Test that _is_equivalent_prediction correctly identifies equivalent BSD variants."""
+    assert tft._is_equivalent_prediction("bsd 3 clause attribution", "bsd 3 clause") is True
+    assert tft._is_equivalent_prediction("bsd 3 clause", "bsd 3 clause attribution") is True
+    assert tft._is_equivalent_prediction("bsd 2 clause patent", "bsd 2 clause") is True
+    assert tft._is_equivalent_prediction("bsd 2 clause", "bsd 2 clause patent") is True
+    assert tft._is_equivalent_prediction("bsd 3 clause", "bsd 2 clause") is False
