@@ -23,6 +23,9 @@ class MapResult:
 with open(cvar.resources_dir / "license-families.json", "r", encoding="utf-8") as f:
     LICENSE_FAMILIES = json.load(f)
 
+with open(cvar.resources_dir / "license-variant-to-base.json", "r", encoding="utf-8") as f:
+    LICENSE_VARIANT_TO_BASE = json.load(f)
+
 SPDX_ID_TO_FAMILY = {}
 for family, spdx_ids in LICENSE_FAMILIES.items():
     for spdx_id in spdx_ids:
@@ -161,6 +164,9 @@ class MapFuzzyMatch(IMap):
         # For full texts/title texts, prefer a stricter scorer to penalize extra tokens.
         self.scorer_text = rapidfuzz.fuzz.token_sort_ratio
 
+        self.licenses = LicenseDataNormalized.licenses
+        self.base_licenses = [lic for lic in self.licenses if lic["licenseId"] in LICENSE_VARIANT_TO_BASE.values()]
+
     @staticmethod
     def fuzzy_extract_one(license_field: str, choices: tuple[str, ...], *, scorer):
         ret = rapidfuzz.process.extractOne(
@@ -181,25 +187,48 @@ class MapFuzzyMatch(IMap):
 
         return ret
 
-    def map(self, license_field: str):
-        licenses = LicenseDataNormalized.licenses
+    @staticmethod
+    def _best_id_name_match(license_field: str, licenses: list[dict], *, scorer):
         license_ids = tuple(license_info["licenseId"] for license_info in licenses)
         license_names = tuple(license_info["name"] for license_info in licenses)
 
-        score_id = self.fuzzy_extract_one(
-            license_field, license_ids, scorer=self.scorer_id_name
+        score_id = MapFuzzyMatch.fuzzy_extract_one(
+            license_field, license_ids, scorer=scorer
         )
-        score_name = self.fuzzy_extract_one(
-            license_field, license_names, scorer=self.scorer_id_name
+        score_name = MapFuzzyMatch.fuzzy_extract_one(
+            license_field, license_names, scorer=scorer
         )
 
         id_name_scores = sorted([score_id, score_name], key=lambda x: x[1], reverse=True)
         best_id_name_text, best_id_name_score, best_id_name_index = id_name_scores[0]
         best_id_name_spdx_id = licenses[best_id_name_index]["licenseId"]
 
+        return best_id_name_spdx_id, best_id_name_score, best_id_name_text, id_name_scores
+
+    @staticmethod
+    def _best_text_match(license_field: str, licenses: list[dict], *, scorer):
+        license_texts = tuple(license_info["text"] for license_info in licenses)
+        score_text = MapFuzzyMatch.fuzzy_extract_one(
+            license_field, license_texts, scorer=scorer
+        )
+
+        best_text_match, best_text_score, best_text_index = score_text
+        best_text_spdx_id = licenses[best_text_index]["licenseId"]
+
+        return best_text_spdx_id, best_text_score, best_text_match, [score_text]
+
+    def map(self, license_field: str):
+        if not self.base_licenses:
+            self.base_licenses = self.licenses
+
+        best_id_name_spdx_id, best_id_name_score, best_id_name_text, id_name_scores = self._best_id_name_match(
+            license_field, self.base_licenses, scorer=self.scorer_id_name
+        )
+
         if best_id_name_score >= self.fuzzy_match_threshold:
             _log.debug(
-                "Best id/name fuzzy match '%s' (SPDX ID '%s') for input %s\nid/name fuzzy scores: %r",
+                "Best base id/name fuzzy match '%s' (SPDX ID '%s') for input %s\n"
+                "base id/name fuzzy scores: %r",
                 shorten_field(best_id_name_text),
                 best_id_name_spdx_id,
                 shorten_field(license_field),
@@ -207,21 +236,46 @@ class MapFuzzyMatch(IMap):
             )
             return MapResult(best_id_name_spdx_id, "spdx_id")
 
-        license_texts = tuple(license_info["text"] for license_info in licenses)
-        score_text = self.fuzzy_extract_one(
-            license_field, license_texts, scorer=self.scorer_text
+        best_id_name_spdx_id, best_id_name_score, best_id_name_text, id_name_scores = self._best_id_name_match(
+            license_field, self.licenses, scorer=self.scorer_id_name
         )
 
-        # Sorting in case of adding more fields. For now only one element.
-        text_scores2 = sorted([score_text], key=lambda x: x[1], reverse=True)
-        best_text_match, best_text_score, best_text_index = text_scores2[0]
-        best_text_spdx_id = licenses[best_text_index]["licenseId"]
+        if best_id_name_score >= self.fuzzy_match_threshold:
+            _log.debug(
+                "Best variant id/name fuzzy match '%s' (SPDX ID '%s') for input %s\n"
+                "variant id/name fuzzy scores: %r",
+                shorten_field(best_id_name_text),
+                best_id_name_spdx_id,
+                shorten_field(license_field),
+                id_name_scores,
+            )
+            return MapResult(best_id_name_spdx_id, "spdx_id")
+
+        best_text_spdx_id, best_text_score, best_text_match, text_scores = self._best_text_match(
+            license_field, self.base_licenses, scorer=self.scorer_text
+        )
 
         _log.debug(
-            "Priority fuzzy below threshold for input %s\npriority scores: %r\n"
-            "text fallback best match '%s' (SPDX ID '%s') with score %.2f",
+            "Priority fuzzy below threshold for input %s\nbase id/name scores: %r\n"
+            "base text fallback best match '%s' (SPDX ID '%s') with score %.2f",
             shorten_field(license_field),
             id_name_scores,
+            shorten_field(best_text_match),
+            best_text_spdx_id,
+            best_text_score,
+        )
+
+        if best_text_score > self.fuzzy_match_threshold:
+            return MapResult(best_text_spdx_id, "spdx_id")
+
+        best_text_spdx_id, best_text_score, best_text_match, text_scores = self._best_text_match(
+            license_field, self.licenses, scorer=self.scorer_text
+        )
+
+        _log.debug(
+            "Base text below threshold for input %s\nvariant text fallback best match '%s' "
+            "(SPDX ID '%s') with score %.2f",
+            shorten_field(license_field),
             shorten_field(best_text_match),
             best_text_spdx_id,
             best_text_score,
@@ -254,10 +308,11 @@ class MapFuzzyMatch(IMap):
 
 def _():
     logger.set_stdout_log_level("DEBUG")
-    test_field = "GPL-2.0-or-later OR AGPL-3.0-or-later OR CERN-OHL-S-2.0+"#"Copyright 2024 Université Paris-Saclay  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+    test_field = "bsd 3c"#"Copyright 2024 Université Paris-Saclay  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
     test_field = preprocess.normalize_license_field(test_field)
-    MapFuzzyMatch().debug_map(test_field)
-    # print(MapFuzzyMatch().map(test_field))
+    # MapFuzzyMatch().debug_map(test_field)
+    print(MapFuzzyMatch().map(test_field))
+
 
 def _token_set_ratio_test():
     input_license = "Copyright 2024 Université Paris-Saclay  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
@@ -271,7 +326,6 @@ def _token_set_ratio_test():
     print(f"{rapidfuzz.fuzz.token_sort_ratio(input_license, mit_text)= }")
     print(f"{rapidfuzz.fuzz.token_sort_ratio(input_license, fsl_1_1_mit)= }")
     print(f"{rapidfuzz.fuzz.token_sort_ratio(input_license, json_license)= }")
-
 
 
 if __name__ == '__main__':
