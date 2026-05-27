@@ -2,10 +2,10 @@ direction: down
 
 classes: {
   node_txt: {
-    style.font-size: 50
+    style.font-size: 90
   }
   edge_txt: {
-    style.font-size: 50
+    style.font-size: 90
   }
 }
 
@@ -28,11 +28,13 @@ Pipeline: Mapping Pipeline {
   style.fill: "#e0f2fe"
 
   filter: 1. Discard Invalid Labels {class: node_txt}
-  exact: 2. Exact Rule-based Matching {class: node_txt}
-  family: 3. License Family Heuristics {class: node_txt}
+  exact_id: 2. Exact SPDX ID Matching {class: node_txt}
+  exact: 2. Exact name/full text Matching {class: node_txt}
+  family: 3. General license Family matching {class: node_txt}
   fuzzy: 4. Approximate Text Matching {class: node_txt}
 
-  filter -> exact: Unmatched {class: edge_txt}
+  filter -> exact_id: Unmatched {class: edge_txt}
+  exact_id -> exact: Unmatched {class: edge_txt}
   exact -> family: Unmatched {class: edge_txt}
   family -> fuzzy: Unmatched {class: edge_txt}
 }
@@ -42,7 +44,7 @@ Output: Classification Results {
   shape: document
   style.fill: "#ecfeff"
 
-  spdx: Standardized SPDX\nIdentifiers {class: node_txt}
+  spdx: SPDX\nIdentifiers and license families {class: node_txt}
   unresolved: Unresolved or\nCustom Licenses {class: node_txt}
 }
 
@@ -50,7 +52,8 @@ Input -> Preprocessing.extract
 Preprocessing.normalize -> Pipeline.filter: Normalized FTLFs {class: edge_txt}
 
 Pipeline.filter -> Output.unresolved: Confirmed Unknown {class: edge_txt}
+Pipeline.exact_id -> Output.spdx: Matched {class: edge_txt}
 Pipeline.exact -> Output.spdx: Matched {class: edge_txt}
 Pipeline.family -> Output.spdx: Matched {class: edge_txt}
-Pipeline.fuzzy -> Output.spdx
-Pipeline.fuzzy -> Output.unresolved: Low Confidence Match {class: edge_txt}
+Pipeline.fuzzy -> Output.spdx: High-Confidence Match {class: edge_txt}
+Pipeline.fuzzy -> Output.unresolved: Low-Confidence Match {class: edge_txt}
