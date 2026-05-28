@@ -149,7 +149,7 @@ class MapPipeline:
         self.last_unresolved_by_map: dict[str, list[tuple[int, str]]] = {}
         self.normalized_to_original_id = spdx_license_data.get_normalized_to_original_id_mapping()
 
-        self.save_results_threshold = 100
+        self.save_results_threshold = 10000
         self.last_batch_start = time.perf_counter()
 
         self.timings_path = cvar.data_dir / "output" / "batch_timings.json"
@@ -171,6 +171,7 @@ class MapPipeline:
         rows_by_idx = df.set_index("idx")
         failed_to_map = set()
         self.last_batch_start = time.perf_counter()
+        pipeline_run_start_time = time.perf_counter()
 
         for count, idx in tqdm(enumerate(unresolved_rows_indices, start=1), total=len(unresolved_rows_indices),
                                desc="Mapping rows"):
@@ -240,12 +241,13 @@ class MapPipeline:
                     "failed_count": len(failed_rows_indices),
                     "mapped_path": os.fspath(mapped_path),
                     "failed_path": os.fspath(failed_path),
-                    "threshold": self.save_results_threshold,
                 })
                 mapped_rows_indices.clear()
                 failed_rows_indices.clear()
                 self.last_batch_start = time.perf_counter()
 
+        total_duration_seconds = time.perf_counter() - pipeline_run_start_time
+        _log.info("Mapping pipeline run finished in %.2f seconds.", total_duration_seconds)
         return mapped_rows_indices, failed_rows_indices, failed_to_map
 
 
@@ -297,7 +299,6 @@ def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = No
             "failed_count": len(map_fails),
             "mapped_path": os.fspath(mapped_path) if mapped_path else None,
             "failed_path": os.fspath(failed_path) if failed_path else None,
-            "threshold": mp.save_results_threshold,
             "final_batch": True,
         })
 
