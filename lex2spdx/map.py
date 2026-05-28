@@ -251,25 +251,24 @@ class MapPipeline:
         return mapped_rows_indices, failed_rows_indices, failed_to_map
 
 
-def run_map_pipeline(on_test_dataset: bool = False, sample_size: int | None = None,
-                     unique_entries_dataset: bool = True) -> None:
+def run_map_pipeline(dataset_path: str | None = None, sample_size: int | None = None
+                     ) -> None:
     """
     Run the mapping pipeline on the PyPI dataset and save the mapped results to a CSV file.
 
-    :param on_test_dataset: Whether to run the mapping pipeline on the test dataset.
+    :param dataset_path: Path to a specific dataset CSV file. If None, uses the default dataset.
     :param sample_size: The number of rows to load from the dataset. If None,
-    :param unique_entries_dataset: Run on dataset with only unique entries.
-    load the full dataset. Ignored if on_test_dataset is True.
+    load the full dataset. Ignored if dataset_path is provided.
     """
     if sample_size == -1:
         sample_size = None
 
-    if on_test_dataset:
-        df = load_dataset(9999, False, cvar.data_dir / "pypi/test/test.csv")
+    if dataset_path:
+        df = load_dataset(None, False, dataset_path)
     else:
         random_start = isinstance(sample_size, int) and sample_size >= 0
-        df_path = cvar.pypi_unique_licenses_dataset_path if unique_entries_dataset else None
-        df = load_dataset(sample_size, random_start, df_path)
+        default_df_path = cvar.pypi_unique_licenses_dataset_path
+        df = load_dataset(sample_size, random_start, default_df_path)
 
     mp = MapPipeline([
         maps.MapNA(),
@@ -320,24 +319,20 @@ def main(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(description="Run SPDX mapping pipeline utilities.")
 
     parser.add_argument(
-        "-t",
-        action="store_true",
-        help="Whether to run mapping pipeline on the test dataset.",
+        "-p",
+        type=str,
+        default=None,
+        help="Path to a dataset CSV file to run mapping on. If not provided, uses the default dataset.",
     )
     parser.add_argument(
         "-s",
         type=int,
-        default=100,
+        default=-1,
         help="Sample size if running on the default dataset. -1 to run on the full dataset."
-    )
-    parser.add_argument(
-        "-r",
-        action="store_true",
-        help="Run on dataset with only unique license entries."
     )
     args = parser.parse_args(argv)
 
-    run_map_pipeline(args.t, args.s, args.r)
+    run_map_pipeline(args.p, args.s)
 
 
 if __name__ == "__main__":
