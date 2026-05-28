@@ -153,7 +153,7 @@ class MapFuzzyMatch(IMap):
 
     def __init__(self):
         super().__init__()
-        self.fuzzy_match_threshold = 85
+        self.fuzzy_match_threshold = 90
         # Partial_ratio is very permissive for short strings.
         # Example: "doc" will score 100 against any long text containing
         # "documentation" and can cause false positives.
