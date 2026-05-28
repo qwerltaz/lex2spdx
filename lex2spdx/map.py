@@ -123,7 +123,8 @@ def load_dataset(sample_size: int | None = None, random_start: bool = False,
     else:
         df = pd.read_csv(path, low_memory=False, nrows=sample_size)
 
-    df.drop(["Unnamed: 0"], axis=1, inplace=True)
+    if "Unnamed: 0" in df.columns:
+        df.drop(["Unnamed: 0"], axis=1, inplace=True)
     df.dropna(subset=["license"], inplace=True)
 
     if drop_duplicate_licenses:
