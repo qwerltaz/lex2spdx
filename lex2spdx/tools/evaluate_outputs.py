@@ -32,6 +32,8 @@ class EvaluationOutputs:
     map_success_counts_path: Path
     top_identifiers_path: Path
     conflicts_path: Path | None
+    unresolved_inputs_path: Path
+    predicted_inputs_path: Path
 
 
 def _list_csv_files(dir_path: Path) -> list[Path]:
@@ -172,6 +174,34 @@ def _load_ground_truth(path: Path) -> pd.DataFrame:
     return df
 
 
+def _load_input_licenses(indices: Iterable[int], dataset_path: Path) -> pd.DataFrame:
+    idx_set = {int(idx) for idx in indices}
+    if not idx_set:
+        return pd.DataFrame(columns=["idx", "input_license"])
+    if not dataset_path.exists():
+        _log.warning("Dataset file not found: %s", dataset_path)
+        return pd.DataFrame(columns=["idx", "input_license"])
+
+    frames: list[pd.DataFrame] = []
+    usecols = ["idx", "license"]
+    for chunk in pd.read_csv(dataset_path, usecols=usecols, chunksize=100_000, low_memory=False):
+        chunk["idx"] = pd.to_numeric(chunk["idx"], errors="coerce")
+        chunk = chunk.dropna(subset=["idx"])
+        chunk["idx"] = chunk["idx"].astype(int)
+        matched = chunk[chunk["idx"].isin(idx_set)]
+        if not matched.empty:
+            matched = matched[["idx", "license"]].rename(columns={"license": "input_license"})
+            frames.append(matched)
+        if matched.shape[0] >= len(idx_set):
+            break
+
+    if not frames:
+        return pd.DataFrame(columns=["idx", "input_license"])
+
+    merged = pd.concat(frames, ignore_index=True)
+    return merged.drop_duplicates(subset=["idx"]).reset_index(drop=True)
+
+
 def _write_outputs(
         output_dir: Path,
         timestamp: str,
@@ -181,6 +211,8 @@ def _write_outputs(
         map_success_counts: pd.DataFrame,
         top_identifiers: pd.DataFrame,
         conflicts: pd.DataFrame,
+        unresolved_inputs: pd.DataFrame,
+        predicted_inputs: pd.DataFrame,
 ) -> EvaluationOutputs:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -189,6 +221,8 @@ def _write_outputs(
     mapping_type_counts_path = output_dir / f"mapping_type_counts_{timestamp}.csv"
     map_success_counts_path = output_dir / f"map_success_counts_{timestamp}.csv"
     top_identifiers_path = output_dir / f"top_identifiers_{timestamp}.csv"
+    unresolved_inputs_path = output_dir / f"unresolved_input_licenses_{timestamp}.csv"
+    predicted_inputs_path = output_dir / f"predicted_input_licenses_{timestamp}.csv"
     conflicts_path: Path | None = None
 
     with open(summary_path, "w", encoding="utf-8") as handle:
@@ -198,6 +232,8 @@ def _write_outputs(
     mapping_type_counts.to_csv(mapping_type_counts_path, index=False)
     map_success_counts.to_csv(map_success_counts_path, index=False)
     top_identifiers.to_csv(top_identifiers_path, index=False)
+    unresolved_inputs.to_csv(unresolved_inputs_path, index=False)
+    predicted_inputs.to_csv(predicted_inputs_path, index=False)
 
     if not conflicts.empty:
         conflicts_path = output_dir / f"mapping_conflicts_{timestamp}.csv"
@@ -210,6 +246,8 @@ def _write_outputs(
         map_success_counts_path=map_success_counts_path,
         top_identifiers_path=top_identifiers_path,
         conflicts_path=conflicts_path,
+        unresolved_inputs_path=unresolved_inputs_path,
+        predicted_inputs_path=predicted_inputs_path,
     )
 
 
@@ -227,6 +265,7 @@ def evaluate_outputs(
         failed_dir: Path,
         output_dir: Path,
         top_n: int,
+        dataset_path: Path,
 ) -> EvaluationOutputs:
     mapped_files = _list_csv_files(mapped_dir)
     failed_files = _list_csv_files(failed_dir)
@@ -253,6 +292,20 @@ def evaluate_outputs(
     map_success_counts = mapped_df["map_name"].value_counts().rename_axis("map_name").reset_index(name="count")
     top_identifiers = _top_identifiers(mapped_df, top_n)
 
+    mapped_indices = set(mapped_df["idx"].tolist()) if not mapped_df.empty else set()
+    failed_indices = set(failed_df["idx"].tolist()) if not failed_df.empty else set()
+    unresolved_indices = failed_indices - mapped_indices
+
+    unresolved_inputs = _load_input_licenses(unresolved_indices, dataset_path)
+
+    predicted_inputs = _load_input_licenses(mapped_indices, dataset_path)
+    if not predicted_inputs.empty:
+        predicted_inputs = predicted_inputs.merge(
+            mapped_df[["idx", "license", "mapping_type", "map_name"]],
+            on="idx",
+            how="left",
+        ).rename(columns={"license": "predicted_license"})
+
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S__%f")
     outputs = _write_outputs(
         output_dir,
@@ -263,6 +316,8 @@ def evaluate_outputs(
         map_success_counts,
         top_identifiers,
         conflicts,
+        unresolved_inputs,
+        predicted_inputs,
     )
 
     _log_summary(summary)
@@ -298,6 +353,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=25,
         help="Number of top SPDX identifiers to include.",
     )
+    parser.add_argument(
+        "--dataset-path",
+        type=Path,
+        default=cvar.pypi_unique_licenses_dataset_path,
+        help="Dataset CSV containing idx and license columns.",
+    )
 
     return parser.parse_args(argv)
 
@@ -309,6 +370,7 @@ def main(argv: list[str] | None = None) -> None:
         args.failed_dir,
         args.output_dir,
         args.top_n,
+        args.dataset_path,
     )
 
 
