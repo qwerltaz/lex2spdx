@@ -59,5 +59,3 @@ def normalize_license_field(text: str | None, remove_stop_words: bool = False, t
         text_normalized = " ".join(words)
 
     return text_normalized
-
-normalize_license_field("GPL-3.0")
