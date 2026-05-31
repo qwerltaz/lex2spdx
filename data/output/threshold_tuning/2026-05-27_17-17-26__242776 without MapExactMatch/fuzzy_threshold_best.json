@@ -1,0 +1,26 @@
+{
+  "best_threshold": 98,
+  "config": {
+    "max_threshold": 99,
+    "min_threshold": 60,
+    "objective": "f1",
+    "pipeline_filter": true,
+    "step": 1,
+    "test_path": "C:\\Users\\work\\qwer\\lex2spdx\\data\\pypi\\validation\\test.csv",
+    "validation_path": "C:\\Users\\work\\qwer\\lex2spdx\\data\\pypi\\validation\\validation.csv"
+  },
+  "validation": {
+    "correct_mapped": 153,
+    "correct_mapped_equiv": 161,
+    "coverage": 0.8781725888324873,
+    "f1": 0.8270270270270269,
+    "f1_equiv": 0.8702702702702703,
+    "mapped_count": 173,
+    "precision": 0.884393063583815,
+    "precision_equiv": 0.930635838150289,
+    "recall": 0.7766497461928934,
+    "recall_equiv": 0.817258883248731,
+    "threshold": 98,
+    "total_count": 197
+  }
+}

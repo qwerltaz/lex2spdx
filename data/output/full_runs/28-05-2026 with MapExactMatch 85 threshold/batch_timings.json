@@ -1,0 +1,19 @@
+[
+    {
+        "duration_seconds": 326.394185,
+        "failed_count": 48186,
+        "failed_path": "C:\\Users\\work\\qwer\\lex2spdx\\data\\output\\failed\\failed_2026-05-28_15-41-54__665812.csv",
+        "mapped_count": 10000,
+        "mapped_path": "C:\\Users\\work\\qwer\\lex2spdx\\data\\output\\mapped\\mapped_2026-05-28_15-41-54__650341.csv",
+        "timestamp": "2026-05-28T15:41:54"
+    },
+    {
+        "duration_seconds": 180.647628,
+        "failed_count": 23601,
+        "failed_path": "C:\\Users\\work\\qwer\\lex2spdx\\data\\output\\failed\\failed_2026-05-28_15-44-55__342412.csv",
+        "final_batch": true,
+        "mapped_count": 4766,
+        "mapped_path": "C:\\Users\\work\\qwer\\lex2spdx\\data\\output\\mapped\\mapped_2026-05-28_15-44-55__335214.csv",
+        "timestamp": "2026-05-28T15:44:55"
+    }
+]

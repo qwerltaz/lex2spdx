@@ -1,0 +1,10 @@
+{
+  "coverage_rate": 0.834756063090056,
+  "failed_unique": 17656,
+  "mapped_unique": 14766,
+  "mapping_type_license_family": 47,
+  "mapping_type_spdx_id": 14686,
+  "mapping_type_unknown": 33,
+  "total_unique_seen": 17689,
+  "unresolved_unique": 2923
+}

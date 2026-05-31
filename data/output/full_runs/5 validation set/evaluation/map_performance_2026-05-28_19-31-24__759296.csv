@@ -1,0 +1,6 @@
+map_name,attempts,successes,success_rate,unknowns
+MapFuzzyMatch,86,60,0.6976744186046512,0
+MapExactID,136,36,0.2647058823529412,0
+MapExactMatch,100,10,0.1,0
+MapLicenseFamily,90,4,0.044444444444444446,0
+MapNA,139,3,0.02158273381294964,3

@@ -1,0 +1,24 @@
+idx,license,license_normalized,ground_truth,predicted,exact_correct,equiv_correct
+2277570,Distributed under terms of the AGPL license.,distributed under terms of the agpl license,agpl,gd,False,False
+5425202,GNU,gnu,gpl,agpl 3 0,False,False
+1699132,Apache License,apache license,apache,apache 1 0,False,False
+2526107,BSD 3-Clause License,bsd 3 clause license,bsd 3 clause,bsd 3 clause no nuclear license,False,True
+2138940,License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+),gnu general public license v3 or later gpl 3 0,gpl 3 0 or later,gpl 3 0,False,True
+6436790,BSD License,bsd license,bsd,bsd 3 clause no nuclear license,False,False
+5870535,GNU AFFERO GENERAL PUBLIC LICENSE,gnu affero general public license,agpl,agpl 3 0,False,False
+2713990,GNU,gnu,gpl,agpl 3 0,False,False
+3429993,Apache Software License,apache software license,apache,apache 1 1,False,False
+728167,Apache Software License,apache software license,apache,apache 1 1,False,False
+6012290,OSI Approved :: Apache Software License,apache software license,apache,apache 1 1,False,False
+4487842,"GNU General Public License (GPL), Version 3",gnu general public license gpl version 3,gpl 3 0,smail gpl,False,False
+2163552,Apache2,apache2,apache 2 0,apache 1 1,False,False
+3121751,Apache v2,apache v2,apache,apache 1 1,False,False
+2920556,New BSD,new bsd,bsd,bsd 3 clause,False,False
+4563635,"GNU Lesser General Public License (LGPL), Version 3",gnu lesser general public license lgpl version 3,lgpl 3 0,smail gpl,False,False
+5528093,GNU General Public License v3.0,gnu general public license v3 0,gpl 3 0,agpl 3 0,False,False
+3097747,GNU General Public License v3,gnu general public license v3,gpl 3 0,agpl 3 0,False,False
+1925041,GNU GENERAL PUBLIC LICENSE,gnu general public license,gpl,agpl 3 0,False,False
+2409579,GNU V3,gnu v3,gpl 3 0,agpl 3 0,False,False
+7345017,GNU GENERAL PUBLIC LICENSE Version 3,gnu general public license version 3,gpl 3 0,smail gpl,False,False
+1671372,BSD3 License,bsd3 license,bsd 3 clause,dsdp,False,False
+4155770,BSD 3-Clause License,bsd 3 clause license,bsd 3 clause,bsd 3 clause no nuclear license,False,True

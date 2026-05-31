@@ -1,0 +1,11 @@
+[
+    {
+        "duration_seconds": 4.298502,
+        "failed_count": 438,
+        "failed_path": "C:\\Users\\work\\qwer\\lex2spdx\\data\\output\\failed\\failed_2026-05-28_19-31-00__333619.csv",
+        "final_batch": true,
+        "mapped_count": 113,
+        "mapped_path": "C:\\Users\\work\\qwer\\lex2spdx\\data\\output\\mapped\\mapped_2026-05-28_19-31-00__330678.csv",
+        "timestamp": "2026-05-28T19:31:00"
+    }
+]
