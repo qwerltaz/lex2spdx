@@ -8,6 +8,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from .. import cvar
@@ -31,6 +34,7 @@ class EvaluationOutputs:
     mapping_type_counts_path: Path
     map_success_counts_path: Path
     top_identifiers_path: Path
+    top_identifiers_plot_path: Path | None
     conflicts_path: Path | None
     unresolved_inputs_path: Path
     predicted_inputs_path: Path
@@ -155,6 +159,23 @@ def _top_identifiers(mapped_df: pd.DataFrame, top_n: int) -> pd.DataFrame:
     return counts
 
 
+def _plot_top_identifiers(top_identifiers: pd.DataFrame, output_path: Path) -> bool:
+    if top_identifiers.empty:
+        return False
+
+    fig_width = max(6.0, len(top_identifiers) * 0.4)
+    fig, ax = plt.subplots(figsize=(fig_width, 4.0))
+    ax.bar(top_identifiers["license"].astype(str), top_identifiers["count"])
+    ax.set_xlabel("SPDX license ID")
+    ax.set_ylabel("Count")
+    ax.set_title(f"Top {len(top_identifiers)} mapped SPDX license IDs")
+    ax.tick_params(axis="x", rotation=45, labelsize=8)
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=150)
+    plt.close(fig)
+    return True
+
+
 def _load_ground_truth(path: Path) -> pd.DataFrame:
     if not path.exists():
         _log.warning("Ground truth file not found: %s", path)
@@ -221,6 +242,7 @@ def _write_outputs(
     mapping_type_counts_path = output_dir / f"mapping_type_counts_{timestamp}.csv"
     map_success_counts_path = output_dir / f"map_success_counts_{timestamp}.csv"
     top_identifiers_path = output_dir / f"top_identifiers_{timestamp}.csv"
+    top_identifiers_plot_path: Path | None = output_dir / f"top_identifiers_bar_{timestamp}.png"
     unresolved_inputs_path = output_dir / f"unresolved_input_licenses_{timestamp}.csv"
     predicted_inputs_path = output_dir / f"predicted_input_licenses_{timestamp}.csv"
     conflicts_path: Path | None = None
@@ -235,6 +257,9 @@ def _write_outputs(
     unresolved_inputs.to_csv(unresolved_inputs_path, index=False)
     predicted_inputs.to_csv(predicted_inputs_path, index=False)
 
+    if not _plot_top_identifiers(top_identifiers, top_identifiers_plot_path):
+        top_identifiers_plot_path = None
+
     if not conflicts.empty:
         conflicts_path = output_dir / f"mapping_conflicts_{timestamp}.csv"
         conflicts.to_csv(conflicts_path, index=False)
@@ -245,6 +270,7 @@ def _write_outputs(
         mapping_type_counts_path=mapping_type_counts_path,
         map_success_counts_path=map_success_counts_path,
         top_identifiers_path=top_identifiers_path,
+        top_identifiers_plot_path=top_identifiers_plot_path,
         conflicts_path=conflicts_path,
         unresolved_inputs_path=unresolved_inputs_path,
         predicted_inputs_path=predicted_inputs_path,
