@@ -29,9 +29,9 @@ Pipeline: Mapping Pipeline {
 
   filter: 1. Discard Invalid Labels {class: node_txt}
   exact_id: 2. Exact SPDX ID Matching {class: node_txt}
-  exact: 2. Exact name/full text Matching {class: node_txt}
-  family: 3. General license Family matching {class: node_txt}
-  fuzzy: 4. Approximate Text Matching {class: node_txt}
+  exact: 3. Exact name/full text Matching {class: node_txt}
+  family: 4. General license Family matching {class: node_txt}
+  fuzzy: 5. Approximate Text Matching {class: node_txt}
 
   filter -> exact_id: Unmatched {class: edge_txt}
   exact_id -> exact: Unmatched {class: edge_txt}
