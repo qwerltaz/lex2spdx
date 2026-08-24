@@ -81,7 +81,7 @@ def load_already_mapped_indices() -> set[int]:
 
     mapped_indices: set[int] = set()
     for mapped_file in mapped_files:
-        # No try-except. Let it fail on unexpected columns or other error.
+        # No try-except. Let it fail on unexpected columns or other errors (this function only runs on startup).
         df = pd.read_csv(mapped_file, usecols=["idx"])
 
         idx_values = pd.to_numeric(df["idx"]).dropna().astype(int)
